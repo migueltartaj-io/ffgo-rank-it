@@ -1,0 +1,718 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Family Feud · One Swap (4 Tiles)</title>
+  <style>
+    :root {
+      --bg: #141414;
+      --surface: #1c1c1c;
+      --surface-2: #232323;
+      --text: #e8e8e8;
+      --text-2: #a0a0a0;
+      --text-3: #6e6e6e;
+      --stroke: #2e2e2e;
+      --stroke-2: #3a3a3a;
+      --accent: #599ce7;
+      --gold: #e8c030;
+      --gold-text: #1a1500;
+      --red: #d74a4a;
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0; padding: 0;
+      background: var(--bg); color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, sans-serif;
+      font-size: 16px; line-height: 1.45; min-height: 100%;
+      -webkit-font-smoothing: antialiased;
+      overscroll-behavior: contain;
+    }
+    body {
+      display: flex; justify-content: center;
+      padding: 32px 20px 64px;
+      touch-action: pan-y;
+    }
+    .app { width: 100%; max-width: 720px; }
+    .row { display: flex; align-items: center; gap: 12px; }
+    .row.between { justify-content: space-between; }
+    .col { display: flex; flex-direction: column; }
+    .grow { flex: 1; min-width: 0; }
+    .eyebrow {
+      font-size: 11px; letter-spacing: 1.4px; text-transform: uppercase;
+      color: var(--text-3); font-weight: 600;
+    }
+    h1 { font-size: 26px; margin: 4px 0 0; font-weight: 700; letter-spacing: -0.3px; }
+    h3 { font-size: 15px; margin: 0; font-weight: 600; }
+    .stat-label { font-size: 11px; color: var(--text-3); letter-spacing: 1px; font-weight: 600; }
+    .stat-value { font-size: 24px; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; }
+    .stat-divider { width: 1px; height: 32px; background: var(--stroke); margin: 0 4px; }
+
+    .meta-row {
+      display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+      margin: 18px 0 14px;
+    }
+    .pill {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 3px 10px; border-radius: 999px;
+      background: rgba(89, 156, 231, 0.12);
+      border: 1px solid rgba(89, 156, 231, 0.32);
+      color: #9ec6f0;
+      font-size: 11px; font-weight: 600; letter-spacing: 0.4px;
+    }
+    .q-counter { font-size: 13px; color: var(--text-2); }
+    .swap-badge {
+      margin-left: auto;
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 4px 12px; border-radius: 999px;
+      border: 1px solid var(--stroke-2);
+      font-size: 12px; font-weight: 600; letter-spacing: 0.4px;
+      color: var(--text-2);
+    }
+    .swap-badge .dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--accent);
+    }
+    .swap-badge.used .dot { background: var(--text-3); }
+    .swap-badge.used { color: var(--text-3); }
+
+    .card {
+      background: var(--surface); border: 1px solid var(--stroke);
+      border-radius: 10px; padding: 18px 22px;
+    }
+    .question { font-size: 18px; font-weight: 600; line-height: 26px; display: block; }
+
+    .board {
+      display: flex; flex-direction: column; gap: 10px;
+      margin: 18px 0;
+      position: relative;
+    }
+    .tile {
+      display: grid; grid-template-columns: 64px 1fr auto; align-items: center; gap: 14px;
+      padding: 16px 20px; border-radius: 10px;
+      background: var(--surface); border: 1.5px solid var(--stroke);
+      cursor: grab; user-select: none;
+      transition: transform 220ms cubic-bezier(0.22, 1, 0.36, 1),
+                  background 120ms linear, border-color 120ms linear;
+      will-change: transform;
+      touch-action: none;
+    }
+    .tile.dragging {
+      transition: border-color 120ms linear, background 120ms linear;
+      cursor: grabbing;
+      z-index: 50;
+      background: var(--surface-2);
+      border-color: var(--accent);
+    }
+    .tile.preview-target {
+      background: rgba(89, 156, 231, 0.06);
+      border-color: rgba(89, 156, 231, 0.5);
+    }
+    .tile.locked-correct {
+      background: var(--gold);
+      border-color: var(--gold);
+      color: var(--gold-text);
+      cursor: default;
+    }
+    .tile.locked-correct .rank,
+    .tile.locked-correct .answer { color: var(--gold-text); }
+    .tile.locked-correct .answer {
+      font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px;
+    }
+    .tile.locked-wrong {
+      background: rgba(215, 74, 74, 0.10);
+      border-color: var(--red);
+      cursor: default;
+    }
+    .rank-wrap {
+      display: flex; flex-direction: column; align-items: center; gap: 3px;
+      width: 60px;
+    }
+    .rank {
+      font-size: 28px; font-weight: 800; text-align: center;
+      color: var(--text-3); font-variant-numeric: tabular-nums; line-height: 1;
+    }
+    .rank-label {
+      font-size: 8px; font-weight: 700; letter-spacing: 0.6px;
+      color: var(--accent); line-height: 1;
+      text-align: center; white-space: nowrap;
+    }
+    .rank-label.bottom { color: var(--text-3); }
+    .tile.locked-correct .rank-label { color: var(--gold-text); opacity: 0.7; }
+    .tile.locked-wrong .rank-label { color: var(--text-3); }
+    .answer {
+      font-size: 18px; font-weight: 500; color: var(--text);
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .pct {
+      font-size: 18px; font-weight: 800; color: var(--gold-text);
+      font-variant-numeric: tabular-nums;
+      background: rgba(0,0,0,0.18); padding: 6px 14px; border-radius: 4px;
+      min-width: 56px; text-align: center; line-height: 1;
+    }
+    .pct.red {
+      color: #fff; background: var(--red);
+    }
+    .drag-hint {
+      width: 56px; text-align: center; font-size: 11px; letter-spacing: 0.6px;
+      color: var(--text-3); font-weight: 600;
+    }
+
+    .actions {
+      display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+      margin-top: 8px;
+    }
+    .btn {
+      font: inherit; cursor: pointer; border-radius: 6px; padding: 9px 18px;
+      border: 1px solid transparent; font-weight: 600; font-size: 14px;
+      transition: background 100ms linear, border-color 100ms linear, color 100ms linear;
+    }
+    .btn-primary { background: var(--accent); color: #0f1822; border-color: var(--accent); }
+    .btn-primary:hover { background: #6aaae9; }
+    .btn-ghost { background: transparent; color: var(--text-2); border-color: var(--stroke-2); }
+    .btn-ghost:hover { color: var(--text); background: var(--surface-2); }
+
+    .feedback { font-size: 15px; font-weight: 600; margin-left: auto; }
+    .feedback.gold { color: var(--gold); }
+    .feedback.red { color: var(--red); }
+
+    .divider { height: 1px; background: var(--stroke); margin: 24px 0 18px; }
+    .help { font-size: 13px; color: var(--text-2); line-height: 20px; }
+    .help strong { color: var(--text); font-weight: 600; }
+
+    .top-nav {
+      font-size: 12px; color: var(--text-3);
+      margin-bottom: 12px;
+    }
+    .top-nav a { color: var(--text-2); text-decoration: none; border-bottom: 1px dotted var(--stroke-2); }
+    .top-nav a:hover { color: var(--text); }
+
+    @media (max-width: 520px) {
+      body { padding: 16px 10px 48px; }
+      h1 { font-size: 22px; }
+      .question { font-size: 16px; line-height: 24px; }
+      .tile { padding: 14px 16px; grid-template-columns: 52px 1fr auto; gap: 10px; }
+      .rank-wrap { width: 52px; }
+      .rank { font-size: 24px; }
+      .rank-label { font-size: 7px; letter-spacing: 0.4px; }
+      .answer { font-size: 16px; }
+      .pct { font-size: 16px; min-width: 48px; padding: 5px 10px; }
+      .drag-hint { width: 48px; font-size: 10px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app" id="app"></div>
+
+  <script>
+    const TILE_COUNT = 4;
+    const QUESTIONS_RAW = [
+      { question: "What's the worst thing a cop could find in your car?", category: "Wild Card", answers: [
+        { answer: "Drugs", percentage: 60 },
+        { answer: "Beer", percentage: 23 },
+        { answer: "A gun", percentage: 13 },
+        { answer: "A dead body", percentage: 2 },
+      ]},
+      { question: "Name a monster that just wanted to be loved.", category: "Pop Culture", answers: [
+        { answer: "King Kong", percentage: 45 },
+        { answer: "Shrek", percentage: 19 },
+        { answer: "Frankenstein", percentage: 12 },
+        { answer: "The Hulk", percentage: 5 },
+      ]},
+      { question: "On a hot day, name something a person might do naked.", category: "Funny", answers: [
+        { answer: "Swim", percentage: 46 },
+        { answer: "Sunbathe", percentage: 31 },
+        { answer: "Clean the house", percentage: 7 },
+        { answer: "Sleep", percentage: 4 },
+      ]},
+      { question: "Name something people walk out on.", category: "Funny", answers: [
+        { answer: "A movie", percentage: 37 },
+        { answer: "A relationship", percentage: 21 },
+        { answer: "An argument", percentage: 12 },
+        { answer: "A deck", percentage: 7 },
+      ]},
+      { question: "Name something a millionaire probably has more than one of.", category: "Money", answers: [
+        { answer: "Car", percentage: 64 },
+        { answer: "House", percentage: 21 },
+        { answer: "Million dollars", percentage: 7 },
+        { answer: "Girlfriend", percentage: 4 },
+      ]},
+      { question: "Name something a man doesn't want his wife to use.", category: "Funny", answers: [
+        { answer: "His razor", percentage: 50 },
+        { answer: "His car", percentage: 24 },
+        { answer: "His tools", percentage: 13 },
+        { answer: "His underwear", percentage: 5 },
+      ]},
+      { question: "Name something in a divorce that can't be split in half.", category: "Daily Life", answers: [
+        { answer: "Kids", percentage: 67 },
+        { answer: "The house", percentage: 18 },
+        { answer: "The pet", percentage: 9 },
+        { answer: "The car", percentage: 5 },
+      ]},
+      { question: "Name something you wouldn't want to stick your nose into.", category: "Funny", answers: [
+        { answer: "Other people's business", percentage: 46 },
+        { answer: "Poop", percentage: 27 },
+        { answer: "Garbage", percentage: 11 },
+        { answer: "A fight", percentage: 10 },
+      ]},
+      { question: "Name something you'd expect to see in a cheap motel.", category: "Travel", answers: [
+        { answer: "Cockroaches", percentage: 56 },
+        { answer: "A bed", percentage: 15 },
+        { answer: "Dirt", percentage: 13 },
+        { answer: "A Bible", percentage: 5 },
+      ]},
+      { question: "Name something a really cheap person might reuse.", category: "Funny", answers: [
+        { answer: "Paper plates", percentage: 95 },
+        { answer: "Toilet paper", percentage: 13 },
+        { answer: "Coffee grounds", percentage: 7 },
+        { answer: "Paper towels", percentage: 3 },
+      ]},
+      { question: "Name something women wear that hurts.", category: "Daily Life", answers: [
+        { answer: "Heels", percentage: 43 },
+        { answer: "A bra", percentage: 27 },
+        { answer: "A corset", percentage: 22 },
+        { answer: "A thong", percentage: 5 },
+      ]},
+      { question: "Name something a ghost might need money for.", category: "Funny", answers: [
+        { answer: "Food", percentage: 88 },
+        { answer: "Sheets", percentage: 25 },
+        { answer: "Rent", percentage: 18 },
+        { answer: "Chains", percentage: 15 },
+      ]},
+      { question: "Name something a bride wants to be huge.", category: "Celebrations", answers: [
+        { answer: "The ring", percentage: 96 },
+        { answer: "The wedding", percentage: 32 },
+        { answer: "The cake", percentage: 21 },
+        { answer: "The bouquet", percentage: 12 },
+      ]},
+      { question: "Name something women love to hold.", category: "Funny", answers: [
+        { answer: "A baby", percentage: 50 },
+        { answer: "Money", percentage: 25 },
+        { answer: "Their partner", percentage: 11 },
+        { answer: "A pet", percentage: 5 },
+      ]},
+      { question: "Name something OK to do in public, but others judge you for it.", category: "Daily Life", answers: [
+        { answer: "Kiss", percentage: 52 },
+        { answer: "Breastfeed", percentage: 18 },
+        { answer: "Fart", percentage: 13 },
+        { answer: "Burp", percentage: 12 },
+      ]},
+      { question: "Name something you do before going to bed.", category: "Daily Life", answers: [
+        { answer: "Brush teeth", percentage: 45 },
+        { answer: "Have sex", percentage: 28 },
+        { answer: "Shower", percentage: 19 },
+        { answer: "Turn off the lights", percentage: 4 },
+      ]},
+      { question: "Name something that makes a lot of noise.", category: "Funny", answers: [
+        { answer: "Children", percentage: 37 },
+        { answer: "Drums", percentage: 19 },
+        { answer: "A train", percentage: 14 },
+        { answer: "A horn", percentage: 13 },
+      ]},
+      { question: "Name a childhood fear most people never outgrow.", category: "Funny", answers: [
+        { answer: "The dark", percentage: 58 },
+        { answer: "Heights", percentage: 20 },
+        { answer: "Bugs", percentage: 12 },
+        { answer: "Clowns", percentage: 8 },
+      ]},
+      { question: "What's a dog's worst enemy?", category: "Animals", answers: [
+        { answer: "Cats", percentage: 51 },
+        { answer: "People", percentage: 23 },
+        { answer: "Fleas", percentage: 9 },
+        { answer: "Other dogs", percentage: 7 },
+      ]},
+      { question: "Tell me something known as a bloodsucker.", category: "Funny", answers: [
+        { answer: "Leech", percentage: 50 },
+        { answer: "Mosquito", percentage: 25 },
+        { answer: "Vampire", percentage: 10 },
+        { answer: "Tick", percentage: 6 },
+      ]},
+    ];
+
+    const STORAGE_KEY = "ffgo-rank-one-swap-v4";
+
+    const state = loadState() || makeInitialState();
+    const drag = {
+      pointerId: null,
+      source: null,
+      over: null,
+      node: null,
+      startX: 0,
+      startY: 0,
+      slotRects: [],
+      slotHeight: 0,
+      committing: false,
+    };
+
+    function makeInitialState() {
+      return { ...startQuestion(0), questionsCleared: 0, questionsLost: 0 };
+    }
+
+    function loadState() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return null;
+        const p = JSON.parse(raw);
+        if (typeof p.questionIndex !== "number") return null;
+        return p;
+      } catch { return null; }
+    }
+    function saveState() {
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch {}
+    }
+
+    function allPairs(n) {
+      const out = [];
+      for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++) out.push([i, j]);
+      return out;
+    }
+
+    function startQuestion(idx) {
+      const q = QUESTIONS_RAW[idx];
+      const sorted = q.answers.slice().sort((a, b) => b.percentage - a.percentage).slice(0, TILE_COUNT);
+      const base = sorted.map((a, i) => ({
+        id: `q${idx}-t${i}`,
+        answer: a.answer,
+        percentage: a.percentage,
+      }));
+      const expected = sorted.map(a => a.percentage);
+
+      const validPairs = allPairs(TILE_COUNT).filter(([a, b]) => {
+        const t = base.slice();
+        const tmp = t[a]; t[a] = t[b]; t[b] = tmp;
+        return t[a].percentage !== expected[a] || t[b].percentage !== expected[b];
+      });
+
+      const MIN_GAP = 15;
+      const bigGap = validPairs.filter(([a, b]) => expected[a] - expected[b] >= MIN_GAP);
+      const involvesTopOrBottom = bigGap.filter(([a, b]) => a === 0 || b === TILE_COUNT - 1);
+
+      let pool;
+      if (involvesTopOrBottom.length > 0 && Math.random() < 0.75) pool = involvesTopOrBottom;
+      else if (bigGap.length > 0) pool = bigGap;
+      else pool = validPairs;
+
+      const pair = pool[Math.floor(Math.random() * pool.length)] || validPairs[0] || [0, 1];
+      const tiles = base.slice();
+      const tmp = tiles[pair[0]]; tiles[pair[0]] = tiles[pair[1]]; tiles[pair[1]] = tmp;
+      return {
+        questionIndex: idx,
+        tiles,
+        status: "playing",
+        swapsUsed: 0,
+        swapResult: null,
+      };
+    }
+
+    function expectedForCurrent() {
+      const q = QUESTIONS_RAW[state.questionIndex];
+      return q.answers.slice().sort((a, b) => b.percentage - a.percentage).slice(0, TILE_COUNT).map(a => a.percentage);
+    }
+
+    function checkResult() {
+      const expected = expectedForCurrent();
+      const allCorrect = state.tiles.every((t, i) => t.percentage === expected[i]);
+      state.swapResult = allCorrect ? "correct" : "wrong";
+      state.status = allCorrect ? "won" : "lost";
+      if (allCorrect) state.questionsCleared += 1;
+      else state.questionsLost += 1;
+    }
+
+    function render() {
+      const app = document.getElementById("app");
+      const q = QUESTIONS_RAW[state.questionIndex];
+
+      app.innerHTML = "";
+
+      const nav = el("div", "top-nav");
+      const navHTML = document.createElement("span");
+      navHTML.innerHTML = `<a href="index.html">← 5-tile Lock-It-In mode</a>`;
+      nav.appendChild(navHTML);
+      app.appendChild(nav);
+
+      const header = el("div", "row between");
+      header.appendChild(col([
+        span("eyebrow", "Family Feud · One Swap"),
+        tag("h1", null, "Find the Single Swap"),
+        spanWithStyle("eyebrow", `4 tiles · 1 swap · ${QUESTIONS_RAW.length} rounds`, { marginTop: "4px", color: "var(--text-3)", letterSpacing: "0.6px" }),
+      ]));
+      header.appendChild(el("div", "row", [
+        col([span("stat-label", "CLEARED"), span("stat-value", String(state.questionsCleared))]),
+        el("div", "stat-divider"),
+        col([span("stat-label", "LOST"), span("stat-value", String(state.questionsLost))]),
+      ]));
+      app.appendChild(header);
+
+      const meta = el("div", "meta-row");
+      meta.appendChild(span("pill", q.category));
+      meta.appendChild(span("q-counter", `Question ${state.questionIndex + 1} of ${QUESTIONS_RAW.length}`));
+      const badge = el("div", "swap-badge" + (state.swapsUsed > 0 ? " used" : ""));
+      badge.appendChild(el("span", "dot"));
+      const badgeText = document.createElement("span");
+      badgeText.textContent = state.swapsUsed > 0 ? "SWAP USED" : "1 SWAP TO WIN";
+      badge.appendChild(badgeText);
+      meta.appendChild(badge);
+      app.appendChild(meta);
+
+      const card = el("div", "card");
+      card.appendChild(span("question", q.question));
+      app.appendChild(card);
+
+      const expected = expectedForCurrent();
+      const board = el("div", "board");
+      state.tiles.forEach((tile, slotIdx) => {
+        const finished = state.status !== "playing";
+        const isCorrectSlot = tile.percentage === expected[slotIdx];
+
+        const cls = ["tile"];
+        if (finished && isCorrectSlot) cls.push("locked-correct");
+        if (finished && !isCorrectSlot) cls.push("locked-wrong");
+
+        const node = el("div", cls.join(" "));
+        node.dataset.slot = String(slotIdx);
+        const rankWrap = el("div", "rank-wrap");
+        rankWrap.appendChild(span("rank", `#${slotIdx + 1}`));
+        node.appendChild(rankWrap);
+        node.appendChild(span("answer", tile.answer));
+        if (finished) {
+          const pct = span("pct" + (isCorrectSlot ? "" : " red"), String(tile.percentage));
+          node.appendChild(pct);
+        } else {
+          node.appendChild(span("drag-hint", "DRAG"));
+        }
+
+        if (!finished) wireDrag(node, slotIdx);
+        board.appendChild(node);
+      });
+      app.appendChild(board);
+
+      const actions = el("div", "actions");
+      if (state.status === "playing") {
+        const hint = span("feedback", "Drag any tile onto another to swap them.");
+        hint.style.color = "var(--text-2)";
+        hint.style.fontWeight = "500";
+        actions.appendChild(hint);
+      } else if (state.status === "won") {
+        actions.appendChild(spanWithStyle("feedback gold", `Solved! That was the swap.`, { fontSize: "16px" }));
+        actions.appendChild(button("btn btn-primary", "Next Question", handleNextQuestion));
+      } else if (state.status === "lost") {
+        actions.appendChild(spanWithStyle("feedback red", "Wrong swap — board revealed.", { fontSize: "16px" }));
+        actions.appendChild(button("btn btn-primary", "Next Question", handleNextQuestion));
+        actions.appendChild(button("btn btn-ghost", "Retry", handleRetry));
+      }
+      app.appendChild(actions);
+
+      app.appendChild(el("div", "divider"));
+
+      const helpRow = el("div", "row");
+      const helpCol = col([
+        tag("h3", null, "How to play"),
+        (() => {
+          const p = el("div", "help");
+          p.innerHTML = "Drag a tile and the other tiles slide to preview the swap. Drop it on the right one and you win — drop on the wrong one and you lose. <strong>You only get one swap.</strong>";
+          return p;
+        })(),
+      ]);
+      helpCol.classList.add("grow");
+      helpRow.appendChild(helpCol);
+      helpRow.appendChild(button("btn btn-ghost", "New Game", handleNewGame));
+      app.appendChild(helpRow);
+    }
+
+    function wireDrag(node, slotIdx) {
+      node.addEventListener("pointerdown", (e) => onPointerDown(e, node, slotIdx));
+    }
+
+    function onPointerDown(e, node, slotIdx) {
+      if (state.status !== "playing") return;
+      if (drag.committing) return;
+      if (drag.source !== null) return;
+      if (e.button !== undefined && e.button !== 0) return;
+      e.preventDefault();
+
+      try { node.setPointerCapture(e.pointerId); } catch {}
+      drag.pointerId = e.pointerId;
+      drag.source = slotIdx;
+      drag.node = node;
+      drag.startX = e.clientX;
+      drag.startY = e.clientY;
+      drag.over = null;
+
+      const nodes = document.querySelectorAll(".tile");
+      drag.slotRects = Array.from(nodes).map(n => {
+        n.style.transform = "";
+        return n.getBoundingClientRect();
+      });
+      drag.slotHeight = drag.slotRects.length > 1
+        ? drag.slotRects[1].top - drag.slotRects[0].top
+        : drag.slotRects[0].height;
+
+      node.classList.add("dragging");
+
+      node.addEventListener("pointermove", onPointerMove);
+      node.addEventListener("pointerup", onPointerUp);
+      node.addEventListener("pointercancel", onPointerCancel);
+    }
+
+    function onPointerMove(e) {
+      if (drag.source === null || e.pointerId !== drag.pointerId) return;
+      const dx = e.clientX - drag.startX;
+      const dy = e.clientY - drag.startY;
+      drag.node.style.transform = `translate(${dx}px, ${dy}px)`;
+
+      let target = null;
+      for (let i = 0; i < drag.slotRects.length; i++) {
+        if (i === drag.source) continue;
+        const r = drag.slotRects[i];
+        if (e.clientX >= r.left && e.clientX <= r.right &&
+            e.clientY >= r.top && e.clientY <= r.bottom) {
+          target = i; break;
+        }
+      }
+      if (target !== drag.over) {
+        drag.over = target;
+        const nodes = document.querySelectorAll(".tile");
+        nodes.forEach((n, i) => {
+          if (i === drag.source) return;
+          if (i === target) {
+            const offset = (drag.source - i) * drag.slotHeight;
+            n.style.transform = `translateY(${offset}px)`;
+            n.classList.add("preview-target");
+          } else {
+            n.style.transform = "";
+            n.classList.remove("preview-target");
+          }
+        });
+      }
+    }
+
+    function onPointerUp(e) {
+      if (e.pointerId !== drag.pointerId) return;
+      detachPointerListeners();
+
+      const src = drag.source;
+      const tgt = drag.over;
+      const node = drag.node;
+
+      if (tgt === null) {
+        node.style.transform = "";
+        finalizeDrag(false);
+        return;
+      }
+
+      drag.committing = true;
+      const slotDelta = (tgt - src) * drag.slotHeight;
+      node.style.transform = `translate(0px, ${slotDelta}px)`;
+
+      const finish = () => {
+        node.removeEventListener("transitionend", finish);
+        const next = state.tiles.slice();
+        const tmp = next[src]; next[src] = next[tgt]; next[tgt] = tmp;
+        state.tiles = next;
+        state.swapsUsed = 1;
+        checkResult();
+        finalizeDrag(true);
+        drag.committing = false;
+      };
+      node.addEventListener("transitionend", finish);
+      setTimeout(() => {
+        if (drag.committing) finish();
+      }, 320);
+    }
+
+    function onPointerCancel(e) {
+      if (e.pointerId !== drag.pointerId) return;
+      detachPointerListeners();
+      if (drag.node) drag.node.style.transform = "";
+      finalizeDrag(false);
+    }
+
+    function detachPointerListeners() {
+      if (!drag.node) return;
+      drag.node.removeEventListener("pointermove", onPointerMove);
+      drag.node.removeEventListener("pointerup", onPointerUp);
+      drag.node.removeEventListener("pointercancel", onPointerCancel);
+      try { drag.node.releasePointerCapture(drag.pointerId); } catch {}
+    }
+
+    function finalizeDrag(commitedSwap) {
+      const cleanup = () => {
+        document.querySelectorAll(".tile").forEach(n => {
+          n.style.transform = "";
+          n.classList.remove("preview-target");
+          n.classList.remove("dragging");
+        });
+        drag.pointerId = null;
+        drag.source = null;
+        drag.over = null;
+        drag.node = null;
+        drag.slotRects = [];
+        saveState();
+        render();
+      };
+      if (!commitedSwap && drag.node) {
+        const onDone = () => {
+          drag.node.removeEventListener("transitionend", onDone);
+          cleanup();
+        };
+        drag.node.addEventListener("transitionend", onDone);
+        setTimeout(() => {
+          if (drag.node) { drag.node.removeEventListener("transitionend", onDone); cleanup(); }
+        }, 320);
+      } else {
+        cleanup();
+      }
+    }
+
+    function handleNextQuestion() {
+      const nextIdx = (state.questionIndex + 1) % QUESTIONS_RAW.length;
+      Object.assign(state, startQuestion(nextIdx));
+      saveState();
+      render();
+    }
+    function handleRetry() {
+      Object.assign(state, startQuestion(state.questionIndex));
+      saveState();
+      render();
+    }
+    function handleNewGame() {
+      Object.assign(state, makeInitialState());
+      saveState();
+      render();
+    }
+
+    function el(tagName, className, children) {
+      const n = document.createElement(tagName);
+      if (className) n.className = className;
+      if (Array.isArray(children)) children.forEach(c => c && n.appendChild(c));
+      return n;
+    }
+    function tag(tagName, className, text) {
+      const n = document.createElement(tagName);
+      if (className) n.className = className;
+      if (text != null) n.textContent = text;
+      return n;
+    }
+    function span(className, text) { return tag("span", className, text); }
+    function spanWithStyle(className, text, style) {
+      const s = tag("span", className, text);
+      Object.assign(s.style, style);
+      return s;
+    }
+    function col(children, extra) {
+      const n = el("div", "col" + (extra ? " " + extra : ""));
+      children.forEach(c => c && n.appendChild(c));
+      return n;
+    }
+    function button(className, label, onClick) {
+      const b = document.createElement("button");
+      b.className = className;
+      b.textContent = label;
+      b.addEventListener("click", onClick);
+      return b;
+    }
+
+    render();
+  </script>
+</body>
+</html>

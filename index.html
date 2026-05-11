@@ -1,0 +1,587 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Family Feud · Rank It</title>
+  <style>
+    :root {
+      --bg: #141414;
+      --surface: #1c1c1c;
+      --surface-2: #232323;
+      --text: #e8e8e8;
+      --text-2: #a0a0a0;
+      --text-3: #6e6e6e;
+      --stroke: #2e2e2e;
+      --stroke-2: #3a3a3a;
+      --accent: #599ce7;
+      --gold: #e8c030;
+      --gold-text: #1a1500;
+      --gold-soft: rgba(232, 192, 48, 0.18);
+      --red: #d74a4a;
+      --red-soft: rgba(215, 74, 74, 0.16);
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, sans-serif;
+      font-size: 16px;
+      line-height: 1.45;
+      min-height: 100%;
+      -webkit-font-smoothing: antialiased;
+    }
+    body {
+      display: flex;
+      justify-content: center;
+      padding: 32px 20px 64px;
+    }
+    .app { width: 100%; max-width: 720px; }
+    .row { display: flex; align-items: center; gap: 12px; }
+    .row.between { justify-content: space-between; }
+    .col { display: flex; flex-direction: column; }
+    .grow { flex: 1; min-width: 0; }
+    .eyebrow {
+      font-size: 11px; letter-spacing: 1.4px; text-transform: uppercase;
+      color: var(--text-3); font-weight: 600;
+    }
+    h1 { font-size: 26px; margin: 4px 0 0; font-weight: 700; letter-spacing: -0.3px; }
+    h3 { font-size: 15px; margin: 0; font-weight: 600; }
+    .stat-label { font-size: 11px; color: var(--text-3); letter-spacing: 1px; font-weight: 600; }
+    .stat-value {
+      font-size: 24px; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums;
+    }
+    .stat-divider {
+      width: 1px; height: 32px; background: var(--stroke); margin: 0 4px;
+    }
+    .meta-row {
+      display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+      margin: 18px 0 14px;
+    }
+    .pill {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 3px 10px; border-radius: 999px;
+      background: rgba(89, 156, 231, 0.12);
+      border: 1px solid rgba(89, 156, 231, 0.32);
+      color: #9ec6f0;
+      font-size: 11px; font-weight: 600; letter-spacing: 0.4px;
+    }
+    .q-counter { font-size: 13px; color: var(--text-2); }
+    .strikes { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+    .strike-box {
+      width: 26px; height: 26px; border-radius: 4px;
+      border: 1.5px solid var(--stroke-2);
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 800; font-size: 14px; color: transparent;
+      transition: background 100ms linear, border-color 100ms linear, color 100ms linear;
+    }
+    .strike-box.used {
+      background: var(--red); border-color: var(--red); color: #fff;
+    }
+    .card {
+      background: var(--surface); border: 1px solid var(--stroke);
+      border-radius: 10px; padding: 18px 22px;
+    }
+    .question { font-size: 18px; font-weight: 600; line-height: 26px; }
+
+    .board { display: flex; flex-direction: column; gap: 8px; margin: 16px 0; }
+    .tile {
+      display: grid; grid-template-columns: 56px 1fr auto; align-items: center; gap: 14px;
+      padding: 14px 18px; border-radius: 8px;
+      background: var(--surface); border: 1.5px solid var(--stroke);
+      cursor: grab; user-select: none;
+      transition: background 100ms linear, border-color 100ms linear, opacity 100ms linear, transform 100ms ease;
+      touch-action: none;
+    }
+    .tile.dragging { opacity: 0.35; cursor: grabbing; }
+    .tile.drop-target { border-color: var(--accent); background: rgba(89, 156, 231, 0.08); }
+    .tile.wrong { border-color: var(--red); background: rgba(215, 74, 74, 0.06); }
+    .tile.locked {
+      background: var(--gold); border-color: var(--gold);
+      color: var(--gold-text); cursor: default;
+    }
+    .tile.locked .rank, .tile.locked .answer { color: var(--gold-text); }
+    .tile.locked .answer {
+      font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px;
+    }
+    .rank {
+      font-size: 26px; font-weight: 800; text-align: center;
+      color: var(--text-3); font-variant-numeric: tabular-nums; line-height: 1;
+    }
+    .answer {
+      font-size: 17px; font-weight: 500; color: var(--text);
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .pct {
+      font-size: 17px; font-weight: 800; color: var(--gold-text);
+      font-variant-numeric: tabular-nums;
+      background: rgba(0,0,0,0.18); padding: 6px 14px; border-radius: 4px;
+      min-width: 56px; text-align: center; line-height: 1;
+    }
+    .drag-hint {
+      width: 56px; text-align: center; font-size: 11px; letter-spacing: 0.6px;
+      color: var(--text-3); font-weight: 600;
+    }
+    .tile.touch-selected:not(.locked) {
+      border-color: var(--accent);
+      box-shadow: inset 0 0 0 1.5px var(--accent);
+    }
+
+    .actions {
+      display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+      margin-top: 4px;
+    }
+    .btn {
+      font: inherit; cursor: pointer; border-radius: 6px; padding: 8px 16px;
+      border: 1px solid transparent; font-weight: 600; font-size: 14px;
+      transition: background 100ms linear, border-color 100ms linear, color 100ms linear;
+    }
+    .btn-primary { background: var(--accent); color: #0f1822; border-color: var(--accent); }
+    .btn-primary:hover { background: #6aaae9; }
+    .btn-ghost { background: transparent; color: var(--text-2); border-color: var(--stroke-2); }
+    .btn-ghost:hover { color: var(--text); border-color: var(--stroke-2); background: var(--surface-2); }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .feedback { font-size: 14px; font-weight: 600; margin-left: auto; }
+    .feedback.gold { color: var(--gold); }
+    .feedback.red { color: var(--red); }
+
+    .divider { height: 1px; background: var(--stroke); margin: 24px 0 18px; }
+    .help { font-size: 13px; color: var(--text-2); line-height: 20px; }
+    .help strong { color: var(--text); font-weight: 600; }
+
+    .top-nav { font-size: 12px; color: var(--text-3); margin-bottom: 12px; }
+    .top-nav a { color: var(--text-2); text-decoration: none; border-bottom: 1px dotted var(--stroke-2); }
+    .top-nav a:hover { color: var(--text); }
+
+    @media (max-width: 520px) {
+      body { padding: 18px 12px 48px; }
+      h1 { font-size: 22px; }
+      .question { font-size: 16px; line-height: 24px; }
+      .tile { padding: 12px 14px; grid-template-columns: 44px 1fr auto; gap: 10px; }
+      .rank { font-size: 22px; }
+      .answer { font-size: 15px; }
+      .pct { font-size: 15px; min-width: 48px; padding: 5px 10px; }
+      .drag-hint { width: 48px; font-size: 10px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app" id="app"></div>
+
+  <script>
+    const QUESTIONS = [
+      { question: "Name a member of the wedding party.", category: "Celebrations", answers: [
+        { answer: "Bride", percentage: 45 },
+        { answer: "Bridesmaid", percentage: 15 },
+        { answer: "Maid of Honor", percentage: 15 },
+        { answer: "Groom", percentage: 13 },
+        { answer: "Best Man", percentage: 12 },
+      ]},
+      { question: "Name a complaint a customer might have about a bar they're at.", category: "Social Life", answers: [
+        { answer: "Too Much Smoke", percentage: 33 },
+        { answer: "Noise", percentage: 28 },
+        { answer: "Bad Service", percentage: 22 },
+        { answer: "Watery Drinks", percentage: 10 },
+        { answer: "Expensive Drinks", percentage: 7 },
+      ]},
+      { question: "We surveyed 100 eleven-year-olds: name a kind of place where you can get in trouble if you laugh.", category: "Funny Moments", answers: [
+        { answer: "Church", percentage: 36 },
+        { answer: "School / Principal's Office", percentage: 33 },
+        { answer: "Library", percentage: 19 },
+        { answer: "Funeral", percentage: 10 },
+        { answer: "Court", percentage: 2 },
+      ]},
+      { question: "Name something at your company holiday party that could lead you to embarrass yourself.", category: "Work Life", answers: [
+        { answer: "Open Bar", percentage: 47 },
+        { answer: "Dance Floor", percentage: 23 },
+        { answer: "Karaoke", percentage: 13 },
+        { answer: "Mistletoe", percentage: 10 },
+        { answer: "Free Food", percentage: 7 },
+      ]},
+      { question: "Name a breed of dog a man would be embarrassed to admit he's afraid of.", category: "Funny Moments", answers: [
+        { answer: "Poodle", percentage: 48 },
+        { answer: "Chihuahua", percentage: 38 },
+        { answer: "Shih Tzu", percentage: 6 },
+        { answer: "Pitbull", percentage: 5 },
+        { answer: "Yorkshire Terrier", percentage: 3 },
+      ]},
+      { question: "Name the worst thing a policeman could find in your car when he pulls you over.", category: "Wild Card", answers: [
+        { answer: "Drugs", percentage: 60 },
+        { answer: "Open Alcohol", percentage: 23 },
+        { answer: "Gun / Weapon", percentage: 13 },
+        { answer: "Underwear", percentage: 2 },
+        { answer: "Dead Body", percentage: 2 },
+      ]},
+      { question: "What would be the worst thing that you could be turned down for?", category: "Daily Life", answers: [
+        { answer: "Loan", percentage: 30 },
+        { answer: "Job / Promotion", percentage: 27 },
+        { answer: "Date", percentage: 17 },
+        { answer: "Credit Card", percentage: 13 },
+        { answer: "Mortgage", percentage: 13 },
+      ]},
+      { question: "Name the worst thing for your boss to catch you doing at work.", category: "Work Life", answers: [
+        { answer: "Napping", percentage: 43 },
+        { answer: "Using Cell Phone", percentage: 21 },
+        { answer: "Stealing", percentage: 16 },
+        { answer: "Office Romance", percentage: 15 },
+        { answer: "Drinking", percentage: 5 },
+      ]},
+      { question: "What is the worst thing to forget on a camping trip?", category: "Travel & Adventure", answers: [
+        { answer: "Tent", percentage: 52 },
+        { answer: "Sleeping Bag", percentage: 19 },
+        { answer: "Food", percentage: 12 },
+        { answer: "Water", percentage: 11 },
+        { answer: "Matches", percentage: 6 },
+      ]},
+      { question: "Name something embarrassing to fall asleep while doing.", category: "Embarrassing Moments", answers: [
+        { answer: "Making Love", percentage: 45 },
+        { answer: "On the Phone", percentage: 24 },
+        { answer: "Eating", percentage: 17 },
+        { answer: "Driving", percentage: 7 },
+        { answer: "Drinking", percentage: 7 },
+      ]},
+    ];
+
+    const STORAGE_KEY = "ffgo-rank-it-v1";
+
+    const state = loadState() || makeInitialState();
+
+    function makeInitialState() {
+      const base = startQuestion(0);
+      return { ...base, questionsCleared: 0, questionsLost: 0 };
+    }
+
+    function loadState() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return null;
+        const parsed = JSON.parse(raw);
+        if (typeof parsed.questionIndex !== "number") return null;
+        return parsed;
+      } catch { return null; }
+    }
+
+    function saveState() {
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch {}
+    }
+
+    function shuffle(arr) {
+      const a = arr.slice();
+      for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
+      }
+      return a;
+    }
+
+    function startQuestion(idx) {
+      const q = QUESTIONS[idx];
+      const sorted = q.answers.slice().sort((a, b) => b.percentage - a.percentage);
+      const base = sorted.map((a, i) => ({
+        id: `q${idx}-t${i}-${a.answer}`,
+        answer: a.answer,
+        percentage: a.percentage,
+        locked: false,
+      }));
+      let tiles = shuffle(base);
+      const expected = sorted.map(a => a.percentage);
+      for (let n = 0; n < 6; n++) {
+        const wrongAny = tiles.some((t, i) => t.percentage !== expected[i]);
+        if (wrongAny) break;
+        tiles = shuffle(base);
+      }
+      return {
+        questionIndex: idx,
+        tiles,
+        strikes: 0,
+        status: "playing",
+        attempts: 0,
+        lastAttempt: null,
+      };
+    }
+
+    const drag = { source: null, over: null, touchSelected: null };
+
+    function render() {
+      const app = document.getElementById("app");
+      const q = QUESTIONS[state.questionIndex];
+      const sorted = q.answers.slice().sort((a, b) => b.percentage - a.percentage);
+      const expected = sorted.map(a => a.percentage);
+
+      const isReveal = state.status === "lost";
+      const displayTiles = isReveal
+        ? sorted.map((a, i) => ({ id: `r-${i}`, answer: a.answer, percentage: a.percentage, locked: true, revealed: true }))
+        : state.tiles.map(t => ({ ...t, revealed: false }));
+
+      app.innerHTML = "";
+
+      const nav = el("div", "top-nav");
+      const navInner = document.createElement("span");
+      navInner.innerHTML = `<a href="swap-3.html">→ Try One-Swap mode (4 tiles)</a>`;
+      nav.appendChild(navInner);
+      app.appendChild(nav);
+
+      const header = el("div", "row between", [
+        col([
+          span("eyebrow", "Family Feud · Rank It"),
+          tag("h1", null, "Rank the Top 5"),
+        ]),
+        el("div", "row", [
+          col([span("stat-label", "CLEARED"), span("stat-value", String(state.questionsCleared))], "col"),
+          el("div", "stat-divider"),
+          col([span("stat-label", "LOST"), span("stat-value", String(state.questionsLost))], "col"),
+        ]),
+      ]);
+      app.appendChild(header);
+
+      const meta = el("div", "meta-row");
+      meta.appendChild(span("pill", q.category));
+      meta.appendChild(span("q-counter", `Question ${state.questionIndex + 1} of ${QUESTIONS.length}`));
+      const strikes = el("div", "strikes");
+      strikes.appendChild(span("stat-label", "STRIKES"));
+      for (let i = 0; i < 3; i++) {
+        const s = el("div", "strike-box" + (i < state.strikes ? " used" : ""));
+        s.textContent = i < state.strikes ? "X" : "";
+        strikes.appendChild(s);
+      }
+      meta.appendChild(strikes);
+      app.appendChild(meta);
+
+      const questionCard = el("div", "card");
+      questionCard.appendChild(span("question", q.question));
+      app.appendChild(questionCard);
+
+      const board = el("div", "board");
+      displayTiles.forEach((tile, slotIdx) => {
+        const locked = tile.locked;
+        const isDragging = drag.source === slotIdx && !tile.revealed;
+        const isDropTarget = drag.source !== null && drag.over === slotIdx && drag.source !== slotIdx && !locked;
+        const wrong = !locked && state.status === "playing" && state.lastAttempt !== null;
+        const touchSelected = drag.touchSelected === slotIdx && !locked;
+
+        const cls = ["tile"];
+        if (locked) cls.push("locked");
+        if (isDragging) cls.push("dragging");
+        if (isDropTarget) cls.push("drop-target");
+        if (wrong) cls.push("wrong");
+        if (touchSelected) cls.push("touch-selected");
+
+        const node = el("div", cls.join(" "));
+        node.dataset.slot = String(slotIdx);
+        node.setAttribute("draggable", String(!locked && state.status === "playing"));
+
+        node.appendChild(span("rank", `#${slotIdx + 1}`));
+        node.appendChild(span("answer", tile.answer));
+        if (locked) {
+          node.appendChild(span("pct", String(tile.percentage)));
+        } else {
+          node.appendChild(span("drag-hint", "DRAG"));
+        }
+
+        wireTileEvents(node, slotIdx);
+        board.appendChild(node);
+      });
+      app.appendChild(board);
+
+      const actions = el("div", "actions");
+      if (state.status === "playing") {
+        actions.appendChild(button("btn btn-primary", "Lock It In", handleLockIn));
+        actions.appendChild(button("btn btn-ghost", "Reset Board", handleResetBoard));
+        if (state.lastAttempt) {
+          const fb = el("div", "feedback " + (state.lastAttempt.strikeAdded ? "red" : "gold"));
+          if (state.lastAttempt.strikeAdded) {
+            fb.textContent = state.lastAttempt.newlyLocked > 0
+              ? `Strike! ${state.lastAttempt.newlyLocked} locked — keep going.`
+              : "Strike! Nothing in place. Re-rank and try again.";
+          } else {
+            fb.textContent = "Locked in.";
+          }
+          actions.appendChild(fb);
+        }
+      } else if (state.status === "won") {
+        const msg = el("div", "feedback gold");
+        msg.style.fontSize = "16px";
+        msg.textContent = `Board cleared with ${state.strikes} strike${state.strikes === 1 ? "" : "s"}.`;
+        actions.appendChild(msg);
+        actions.appendChild(button("btn btn-primary", "Next Question", handleNextQuestion));
+      } else if (state.status === "lost") {
+        const msg = el("div", "feedback red");
+        msg.style.fontSize = "16px";
+        msg.textContent = "Three strikes — the board is revealed.";
+        actions.appendChild(msg);
+        actions.appendChild(button("btn btn-primary", "Next Question", handleNextQuestion));
+        actions.appendChild(button("btn btn-ghost", "Retry", handleResetBoard));
+      }
+      app.appendChild(actions);
+
+      app.appendChild(el("div", "divider"));
+
+      const helpRow = el("div", "row");
+      const helpCol = col([
+        tag("h3", null, "How to play"),
+        (() => {
+          const p = el("div", "help");
+          p.innerHTML = "Drag any tile onto another to swap them. Rank the 5 answers from <strong>#1 most popular</strong> down to <strong>#5</strong>, then hit <strong>Lock It In</strong>. Correct tiles turn gold and lock — incorrect ones stay loose for another try. You have 3 strikes to clear the board.<br><br>On phones, tap a tile to select it, then tap another to swap.";
+          return p;
+        })(),
+      ]);
+      helpCol.classList.add("grow");
+      helpRow.appendChild(helpCol);
+      helpRow.appendChild(button("btn btn-ghost", "New Game", handleNewGame));
+      app.appendChild(helpRow);
+    }
+
+    function wireTileEvents(node, slotIdx) {
+      const locked = state.tiles[slotIdx] && state.tiles[slotIdx].locked;
+      const canInteract = !locked && state.status === "playing";
+
+      node.addEventListener("dragstart", (e) => {
+        if (!canInteract) { e.preventDefault(); return; }
+        e.dataTransfer.effectAllowed = "move";
+        e.dataTransfer.setData("text/plain", String(slotIdx));
+        drag.source = slotIdx;
+        drag.over = null;
+        render();
+      });
+      node.addEventListener("dragover", (e) => {
+        if (drag.source === null || locked) return;
+        e.preventDefault();
+        e.dataTransfer.dropEffect = "move";
+        if (drag.over !== slotIdx) {
+          drag.over = slotIdx;
+          render();
+        }
+      });
+      node.addEventListener("dragleave", () => {
+        if (drag.over === slotIdx) {
+          drag.over = null;
+          render();
+        }
+      });
+      node.addEventListener("drop", (e) => {
+        e.preventDefault();
+        const src = drag.source;
+        drag.over = null;
+        drag.source = null;
+        if (src === null || src === slotIdx) { render(); return; }
+        if (state.tiles[slotIdx].locked || state.tiles[src].locked) { render(); return; }
+        swapTiles(src, slotIdx);
+      });
+      node.addEventListener("dragend", () => {
+        drag.source = null;
+        drag.over = null;
+        render();
+      });
+
+      node.addEventListener("click", () => {
+        if (!canInteract) return;
+        if (drag.touchSelected === null) {
+          drag.touchSelected = slotIdx;
+          render();
+          return;
+        }
+        if (drag.touchSelected === slotIdx) {
+          drag.touchSelected = null;
+          render();
+          return;
+        }
+        const src = drag.touchSelected;
+        drag.touchSelected = null;
+        if (state.tiles[slotIdx].locked || state.tiles[src].locked) { render(); return; }
+        swapTiles(src, slotIdx);
+      });
+    }
+
+    function swapTiles(a, b) {
+      const next = state.tiles.slice();
+      [next[a], next[b]] = [next[b], next[a]];
+      state.tiles = next;
+      state.lastAttempt = null;
+      saveState();
+      render();
+    }
+
+    function handleLockIn() {
+      if (state.status !== "playing") return;
+      const q = QUESTIONS[state.questionIndex];
+      const sorted = q.answers.slice().sort((a, b) => b.percentage - a.percentage);
+      const expected = sorted.map(a => a.percentage);
+      const prev = state.tiles.filter(t => t.locked).length;
+      const next = state.tiles.map((t, i) => ({
+        ...t,
+        locked: t.locked || t.percentage === expected[i],
+      }));
+      const now = next.filter(t => t.locked).length;
+      const newlyLocked = now - prev;
+      const allCorrect = next.every(t => t.locked);
+      const strikeAdded = !allCorrect;
+      state.tiles = next;
+      if (strikeAdded) state.strikes += 1;
+      state.attempts += 1;
+      state.lastAttempt = { newlyLocked, strikeAdded };
+      if (allCorrect) {
+        state.status = "won";
+        state.questionsCleared += 1;
+      } else if (state.strikes >= 3) {
+        state.status = "lost";
+        state.questionsLost += 1;
+      }
+      saveState();
+      render();
+    }
+
+    function handleResetBoard() {
+      Object.assign(state, startQuestion(state.questionIndex));
+      drag.touchSelected = null;
+      saveState();
+      render();
+    }
+
+    function handleNextQuestion() {
+      const nextIdx = (state.questionIndex + 1) % QUESTIONS.length;
+      Object.assign(state, startQuestion(nextIdx));
+      drag.touchSelected = null;
+      saveState();
+      render();
+    }
+
+    function handleNewGame() {
+      Object.assign(state, makeInitialState());
+      drag.touchSelected = null;
+      saveState();
+      render();
+    }
+
+    function el(tagName, className, children) {
+      const n = document.createElement(tagName);
+      if (className) n.className = className;
+      if (Array.isArray(children)) children.forEach(c => c && n.appendChild(c));
+      return n;
+    }
+    function tag(tagName, className, text) {
+      const n = document.createElement(tagName);
+      if (className) n.className = className;
+      if (text != null) n.textContent = text;
+      return n;
+    }
+    function span(className, text) { return tag("span", className, text); }
+    function col(children, extra) {
+      const n = el("div", "col" + (extra ? " " + extra : ""));
+      children.forEach(c => c && n.appendChild(c));
+      return n;
+    }
+    function button(className, label, onClick) {
+      const b = document.createElement("button");
+      b.className = className;
+      b.textContent = label;
+      b.addEventListener("click", onClick);
+      return b;
+    }
+
+    render();
+  </script>
+</body>
+</html>
