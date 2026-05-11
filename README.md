@@ -1,15 +1,15 @@
 # FFGO Rank It
 
-Family Feud-style ranking mini-game. Two modes:
+Family Feud-style ranking mini-game. Pure static HTML/CSS/JS, no build step. Open any file in a modern browser.
 
-- **`index.html`** — 5-tile Lock-It-In mode (drag to re-rank all 5 answers, 3 strikes).
-- **`swap-3.html`** — 4-tile One-Swap mode (find the single swap to fix the order; one chance).
+## Modes
 
-Pure static HTML/CSS/JS, no build step. Open `index.html` in any modern browser.
+- **`index.html`** — 5-tile Lock-It-In mode. Drag to re-rank all 5 answers, 3 strikes to clear the board.
+- **`drag-n-drop.html`** — 4-tile Drag-n-Drop mode. Interactive pointer-based drag; the tile follows the cursor, the hover target slides to preview the swap.
+- **`sudden_death.html`** — 4-tile Sudden Death mode. One swap, one chance — solve it or lose the round.
 
 ## Live
 
-Once published via GitHub Pages, the URLs are:
-
-- 5-tile: `https://migueltartaj-io.github.io/ffgo-rank-it/`
-- 4-tile: `https://migueltartaj-io.github.io/ffgo-rank-it/swap-3.html`
+- 5-tile: https://migueltartaj-io.github.io/ffgo-rank-it/
+- Drag-n-Drop: https://migueltartaj-io.github.io/ffgo-rank-it/drag-n-drop.html
+- Sudden Death: https://migueltartaj-io.github.io/ffgo-rank-it/sudden_death.html
