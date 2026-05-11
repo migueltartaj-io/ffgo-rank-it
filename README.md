@@ -6,7 +6,7 @@ Family Feud-style ranking mini-game. Pure static HTML/CSS/JS, no build step. Ope
 
 - **`index.html`** — 5-tile Lock-It-In mode. Drag to re-rank all 5 answers, 3 strikes to clear the board.
 - **`drag-n-drop.html`** — 4-tile Drag-n-Drop mode. Interactive pointer-based drag; the tile follows the cursor, the hover target slides to preview the swap.
-- **`sudden_death.html`** — 4-tile Sudden Death mode. One swap, one chance — solve it or lose the round (Strike Shields across your run until New Game).
+- **`sudden_death.html`** — 4-tile Sudden Death **with Strike Shields** (5 for the whole run until New Game). One swap per puzzle; wrong swap spends a shield or loses the round. This is what GitHub Pages serves at the Sudden Death URL below.
 - **`pass_or_play_with_shields.html`** — Tactical swipe Pass or Play prototype with Strike Shields.
 - **`slack-links.html`** — **Pass or Play** and **Sudden Death** only: public URLs to copy into Slack.
 

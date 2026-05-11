@@ -3,15 +3,15 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>Family Feud · Sudden Death (4 Tiles)</title>
-  <meta name="description" content="One swap to fix the board. Five Strike Shields for your whole run — wrong swap spends a shield or reveals the board." />
-  <meta property="og:title" content="Family Feud · Sudden Death — one swap" />
-  <meta property="og:description" content="One swap to fix the board. Strike Shields absorb wrong swaps until you run out." />
+  <title>Family Feud · Sudden Death + Strike Shields</title>
+  <meta name="description" content="One swap to fix the board. Strike Shields (5 per run): a wrong swap spends a shield and reshuffles; no shields left = lost round." />
+  <meta property="og:title" content="Family Feud · Sudden Death + Strike Shields" />
+  <meta property="og:description" content="One swap per puzzle. Strike Shields absorb wrong swaps until you run out — playable on GitHub Pages." />
   <meta property="og:type" content="website" />
   <meta property="og:site_name" content="FFGO Rank It" />
   <meta name="twitter:card" content="summary" />
-  <meta name="twitter:title" content="Family Feud · Sudden Death — one swap" />
-  <meta name="twitter:description" content="One swap to fix the board. Strike Shields absorb wrong swaps until you run out." />
+  <meta name="twitter:title" content="Family Feud · Sudden Death + Strike Shields" />
+  <meta name="twitter:description" content="Strike Shields absorb wrong swaps. Full game on GitHub Pages." />
   <style>
     :root {
       --bg: #141414;
@@ -532,7 +532,7 @@
       const header = el("div", "row between");
       header.appendChild(col([
         span("eyebrow", "Family Feud · One Swap"),
-        tag("h1", null, "Find the Single Swap"),
+        tag("h1", null, "Find the Single Swap · Strike Shields"),
         spanWithStyle("eyebrow", `4 tiles · 1 swap · ${QUESTIONS_RAW.length} rounds`, { marginTop: "4px", color: "var(--text-3)", letterSpacing: "0.6px" }),
       ]));
       header.appendChild(el("div", "row", [
