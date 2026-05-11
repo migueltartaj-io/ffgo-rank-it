@@ -4,6 +4,14 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>Family Feud · Rank It</title>
+  <meta name="description" content="Drag five answers into survey order. Lock correct ranks; three strikes to clear the board. Pure HTML prototype." />
+  <meta property="og:title" content="Family Feud · Rank It — Lock-It-In (5 tiles)" />
+  <meta property="og:description" content="Drag five answers into survey order. Lock correct ranks; three strikes to clear the board." />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="FFGO Rank It" />
+  <meta name="twitter:card" content="summary" />
+  <meta name="twitter:title" content="Family Feud · Rank It — Lock-It-In (5 tiles)" />
+  <meta name="twitter:description" content="Drag five answers into survey order. Lock correct ranks; three strikes to clear the board." />
   <style>
     :root {
       --bg: #141414;
@@ -320,7 +328,7 @@
 
       const nav = el("div", "top-nav");
       const navInner = document.createElement("span");
-      navInner.innerHTML = `<a href="drag-n-drop.html">→ Drag-n-Drop mode</a> &nbsp;·&nbsp; <a href="sudden_death.html">→ Sudden Death mode</a>`;
+      navInner.innerHTML = `<a href="drag-n-drop.html">→ Drag-n-Drop</a> &nbsp;·&nbsp; <a href="sudden_death.html">→ Sudden Death</a> &nbsp;·&nbsp; <a href="pass_or_play_with_shields.html">→ Pass or Play</a> &nbsp;·&nbsp; <a href="slack-links.html">→ Slack links</a>`;
       nav.appendChild(navInner);
       app.appendChild(nav);
 

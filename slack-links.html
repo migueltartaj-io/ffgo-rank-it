@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>FFGO — Pass or Play & Sudden Death (Slack links)</title>
+  <meta name="description" content="Copy the Pass or Play and Sudden Death prototype URLs for Slack. Unfurls with title and description." />
+  <meta property="og:title" content="FFGO — Pass or Play & Sudden Death" />
+  <meta property="og:description" content="Copy links for the Pass or Play and Sudden Death Strike Shields prototypes." />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="FFGO Rank It" />
+  <meta name="twitter:card" content="summary" />
+  <meta name="twitter:title" content="FFGO — Pass or Play & Sudden Death" />
+  <meta name="twitter:description" content="Copy links for the Pass or Play and Sudden Death prototypes." />
+  <style>
+    :root {
+      --bg: #141414;
+      --surface: #1c1c1c;
+      --text: #e8e8e8;
+      --text-2: #a0a0a0;
+      --text-3: #6e6e6e;
+      --stroke: #2e2e2e;
+      --stroke-2: #3a3a3a;
+      --accent: #599ce7;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; background: var(--bg); color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, sans-serif;
+      line-height: 1.5; -webkit-font-smoothing: antialiased; }
+    body { padding: 28px 20px 64px; display: flex; justify-content: center; }
+    .app { width: 100%; max-width: 640px; }
+    .eyebrow { font-size: 11px; letter-spacing: 1.2px; text-transform: uppercase; color: var(--text-3); font-weight: 600; }
+    h1 { font-size: 24px; margin: 6px 0 8px; font-weight: 700; letter-spacing: -0.3px; }
+    .lede { color: var(--text-2); font-size: 15px; margin: 0 0 20px; }
+    .top-nav { font-size: 12px; color: var(--text-3); margin-bottom: 20px; }
+    .top-nav a { color: var(--text-2); text-decoration: none; border-bottom: 1px dotted var(--stroke-2); }
+    .top-nav a:hover { color: var(--text); }
+    .card {
+      background: var(--surface); border: 1px solid var(--stroke);
+      border-radius: 10px; padding: 16px 18px; margin-bottom: 12px;
+    }
+    .card h2 { font-size: 15px; margin: 0 0 6px; font-weight: 600; }
+    .card p { font-size: 13px; color: var(--text-2); margin: 0 0 12px; }
+    .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: stretch; }
+    .url-field {
+      flex: 1; min-width: 0; font-size: 12px; padding: 10px 12px; border-radius: 6px;
+      border: 1px solid var(--stroke-2); background: #0f0f0f; color: var(--text);
+      font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+    }
+    .btn {
+      font: inherit; cursor: pointer; border-radius: 6px; padding: 10px 16px; font-weight: 600; font-size: 13px;
+      border: 1px solid var(--accent); background: var(--accent); color: #0f1822; white-space: nowrap;
+    }
+    .btn:hover { filter: brightness(1.08); }
+    .btn-secondary {
+      font: inherit; cursor: pointer; border-radius: 6px; padding: 10px 16px; font-weight: 600; font-size: 13px;
+      border: 1px solid var(--stroke-2); background: transparent; color: var(--text-2); white-space: nowrap;
+      text-decoration: none; display: inline-flex; align-items: center;
+    }
+    .btn-secondary:hover { color: var(--text); border-color: var(--text-3); }
+    .row-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 8px; }
+    .banner-file {
+      font-size: 13px; color: var(--accent); background: rgba(89, 156, 231, 0.1);
+      border: 1px solid rgba(89, 156, 231, 0.25); border-radius: 8px; padding: 12px 14px; margin-bottom: 16px; line-height: 1.45;
+    }
+    .toast {
+      position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(20px);
+      background: #2a2a2a; color: var(--text); padding: 10px 20px; border-radius: 8px; font-size: 14px; font-weight: 600;
+      border: 1px solid var(--stroke-2); opacity: 0; pointer-events: none; transition: opacity 0.2s, transform 0.2s;
+      z-index: 1000;
+    }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+    .hint { font-size: 12px; color: var(--text-3); margin-top: 20px; line-height: 1.55; }
+    .hint code { font-size: 11px; background: rgba(89, 156, 231, 0.1); padding: 2px 6px; border-radius: 4px; }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div class="top-nav"><a href="index.html">← Lock-It-In</a></div>
+    <span class="eyebrow">FFGO Rank It</span>
+    <h1>Pass or Play &amp; Sudden Death</h1>
+    <p class="lede">Only these two prototypes. <strong>Open</strong> runs this folder (local or hosted). <strong>Copy link</strong> uses the address bar’s origin — same place you opened this page from.</p>
+
+    <div id="file-banner" class="banner-file" hidden></div>
+
+    <div id="links-root"></div>
+
+    <p class="hint">
+      Links use <code id="base-display"></code> — taken from this page’s address (same folder as the prototypes).<br />
+      <code>og:title</code> / <code>og:description</code> on each prototype still power Slack previews when someone pastes an <code>https://</code> link.
+    </p>
+  </div>
+  <div id="toast" class="toast" role="status" aria-live="polite">Copied</div>
+
+  <script>
+    /** Same folder as slack-links.html — works on GitHub Pages, localhost, and file:// */
+    function getShareBase() {
+      const loc = window.location;
+      if (loc.protocol !== "http:" && loc.protocol !== "https:") return null;
+      let path = loc.pathname || "/";
+      if (!path.endsWith("/")) {
+        path = path.slice(0, path.lastIndexOf("/") + 1);
+      }
+      return loc.origin + path;
+    }
+
+    const MODES = [
+      {
+        file: "pass_or_play_with_shields.html",
+        title: "Pass or Play — Strike Shields",
+        body: "Swipe to play or pass. Five Strike Shields per run; New Run resets the pool.",
+      },
+      {
+        file: "sudden_death.html",
+        title: "Sudden Death — one swap",
+        body: "One swap to fix the board. Strike Shields for the full run until New Game.",
+      },
+    ];
+
+    const shareBase = getShareBase();
+    const baseEl = document.getElementById("base-display");
+    if (shareBase) {
+      baseEl.textContent = shareBase;
+    } else {
+      baseEl.textContent = "(local file — use Open, or run a static server for shareable https URLs)";
+      const banner = document.getElementById("file-banner");
+      banner.hidden = false;
+      banner.innerHTML =
+        "You opened this page as a <strong>local file</strong> (<code>file://</code>). " +
+        "Copy link won’t produce a URL Slack can open. Use <strong>Open</strong> to try the prototypes here, " +
+        "or deploy to GitHub Pages / any host and open <code>slack-links.html</code> from that <code>https://</code> URL.";
+    }
+
+    const toastEl = document.getElementById("toast");
+    let toastTimer;
+    function showToast() {
+      toastEl.classList.add("show");
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => toastEl.classList.remove("show"), 1600);
+    }
+
+    async function copyLink(fullUrl) {
+      try {
+        await navigator.clipboard.writeText(fullUrl);
+      } catch {
+        const i = document.createElement("input");
+        i.value = fullUrl;
+        document.body.appendChild(i);
+        i.select();
+        document.execCommand("copy");
+        i.remove();
+      }
+      showToast();
+    }
+
+    const root = document.getElementById("links-root");
+    MODES.forEach((m) => {
+      const full = shareBase ? shareBase + m.file : m.file;
+      const card = document.createElement("section");
+      card.className = "card";
+      card.innerHTML =
+        "<h2>" + m.title + "</h2>" +
+        "<p>" + m.body + "</p>" +
+        '<div class="row">' +
+          '<input class="url-field" type="text" readonly value="' + full.replace(/"/g, "&quot;") + '" aria-label="URL for ' + m.title.replace(/"/g, "") + '" />' +
+          '<button type="button" class="btn">Copy link</button>' +
+        "</div>" +
+        '<div class="row-actions"><a class="btn-secondary" href="' + m.file.replace(/"/g, "") + '">Open prototype</a></div>';
+      const btn = card.querySelector(".btn");
+      const input = card.querySelector(".url-field");
+      btn.addEventListener("click", () => copyLink(full));
+      input.addEventListener("focus", () => input.select());
+      root.appendChild(card);
+    });
+  </script>
+</body>
+</html>

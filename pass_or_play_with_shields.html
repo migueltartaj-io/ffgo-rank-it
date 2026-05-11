@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tactical Swipe — Pass or Play (Strike Shields)</title>
+    <meta name="description" content="Swipe up to play, down to pass. Five Strike Shields per run absorb mistakes. Family Feud-style prototype." />
+    <meta property="og:title" content="Pass or Play — Tactical Swipe + Strike Shields" />
+    <meta property="og:description" content="Swipe to play or pass survey cards. Strike Shields absorb errors; pool lasts the whole run until New Run." />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="FFGO Rank It" />
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="Pass or Play — Tactical Swipe + Strike Shields" />
+    <meta name="twitter:description" content="Swipe to play or pass survey cards. Strike Shields absorb errors; pool lasts the whole run until New Run." />
+    <!-- Strike Shields: 5 total run pool (localStorage), spent shields never refill until NEW RUN -->
+    <script src="https://cdn.jsdelivr.net/npm/interactjs/dist/interact.min.js"></script>
+    <style>
+        :root {
+            --bg: #121212; --accent: #fbc531; --strike-red: #ff3f34; --pass-green: #2ecc71;
+            --shield-blue: #3498db; --shield-glow: rgba(52, 152, 219, 0.45);
+            --card-w: 250px; --card-h: 140px;
+        }
+
+        body { margin: 0; background: #000; font-family: 'Arial Black', sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; color: white; overflow: hidden; }
+
+        #game-container {
+            width: 375px; height: 667px; background: var(--bg); border-radius: 40px; position: relative;
+            display: flex; flex-direction: column; border: 4px solid #333; overflow: hidden; transition: all 0.5s ease;
+        }
+        #game-container.on-fire { border-color: var(--accent); box-shadow: 0 0 40px rgba(251, 197, 49, 0.3); }
+
+        .header { width: 100%; padding: 18px 0 6px; display: flex; justify-content: space-around; align-items: center; }
+        #strike-icons { display: flex; gap: 8px; flex: 1; justify-content: center; }
+        .strike-x { color: #222; font-size: 28px; font-weight: 900; transition: all 0.2s; }
+        .strike-x.active { color: var(--strike-red); text-shadow: 0 0 15px rgba(255, 63, 52, 0.6); transform: scale(1.2); }
+        #score-display { color: var(--accent); font-size: 24px; font-weight: 900; flex: 1; text-align: center; }
+
+        .shield-row {
+            display: flex; justify-content: center; align-items: center; gap: 6px;
+            padding: 4px 12px 12px;
+        }
+        .shield-row-label { font-size: 9px; letter-spacing: 2px; color: #666; width: 100%; text-align: center; margin-bottom: 4px; }
+        #shield-icons { display: flex; gap: 6px; justify-content: center; flex-wrap: nowrap; }
+        .shield-icon {
+            font-size: 22px; line-height: 1; opacity: 0.22; filter: grayscale(1);
+            transition: transform 0.2s, opacity 0.2s, filter 0.2s;
+        }
+        .shield-icon.active {
+            opacity: 1; filter: none;
+            text-shadow: 0 0 12px var(--shield-glow);
+        }
+
+        #question-text { text-align: center; color: #fff; font-size: 16px; margin: 5px 15px; text-transform: uppercase; height: 40px; display: flex; align-items: center; justify-content: center; }
+
+        .board { width: 90%; margin: 5px auto 25px auto; display: flex; flex-direction: column; gap: 8px; z-index: 10; }
+        .slot { height: 46px; background: #1a1a1a; border-radius: 12px; display: flex; align-items: center; padding: 0 15px; border: 1px solid #333; color: #444; transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        .slot.revealed { background: white; color: #000; border: none; transform: scale(1.05); box-shadow: 0 5px 15px rgba(0,0,0,0.5); }
+        .slot-rank { width: 25px; font-size: 14px; opacity: 0.5; }
+        .slot-text { flex-grow: 1; text-transform: uppercase; font-size: 14px; font-weight: 900; }
+        .slot-val { font-size: 14px; font-weight: 900; color: #444; }
+
+        #deck-area { position: absolute; bottom: 85px; width: 100%; height: 180px; display: flex; justify-content: center; }
+        .stack-item { position: absolute; width: var(--card-w); height: var(--card-h); border-radius: 24px; display: flex; flex-direction: column; justify-content: center; align-items: center; text-transform: uppercase; top: 20px; box-shadow: 0 10px 20px rgba(0,0,0,0.4); }
+        .deck-layer { background: #2a2a2a; border: 1px solid #333; z-index: 1; transition: transform 0.2s; }
+        .card.active { background: white; color: #121212; z-index: 100; cursor: grab; touch-action: none; }
+        .card.peek { background: #444; color: #666; z-index: 90; }
+        .card-label { font-size: 22px; font-weight: 900; text-align: center; margin-bottom: 4px; padding: 0 10px; }
+        .card-counter { font-size: 11px; font-family: sans-serif; font-weight: bold; opacity: 0.4; }
+
+        #end-screen { position: absolute; inset: 0; background: rgba(0,0,0,0.98); display: none; flex-direction: column; justify-content: center; align-items: center; z-index: 1000; padding: 20px; }
+        .result-group { width: 90%; margin-bottom: 16px; text-align: left; }
+        .group-label { font-size: 10px; color: #666; letter-spacing: 2px; margin-bottom: 8px; border-bottom: 1px solid #333; padding-bottom: 4px; }
+        .pill-container { display: flex; flex-wrap: wrap; gap: 6px; }
+        .pill { padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: bold; background: #1a1a1a; }
+        .pill.success { color: var(--pass-green); border: 1px solid var(--pass-green); }
+        .pill.fail { color: var(--strike-red); border: 1px solid var(--strike-red); }
+        .pill.shield { color: var(--shield-blue); border: 1px solid var(--shield-blue); }
+
+        .end-actions { display: flex; flex-direction: column; align-items: center; gap: 10px; margin-top: 10px; }
+        .btn-new-run {
+            padding: 11px 28px; background: transparent; color: var(--text-2, #aaa);
+            border: 1px solid #444; font-weight: bold; border-radius: 12px; cursor: pointer;
+            font-size: 12px; letter-spacing: 0.5px;
+        }
+        .btn-new-run:hover { border-color: var(--shield-blue); color: var(--shield-blue); }
+
+        .floating-text { position: absolute; font-weight: 900; font-size: 32px; pointer-events: none; z-index: 1000; animation: floatUp 0.8s ease-out forwards; left: 50%; top: 42%; transform: translateX(-50%); text-align: center; width: 90%; margin-left: 0; }
+        @keyframes floatUp { 0% { opacity: 1; transform: translateX(-50%) translateY(0); } 100% { opacity: 0; transform: translateX(-50%) translateY(-120px); } }
+        #strike-overlay { position: absolute; inset: 0; background: rgba(255,0,0,0.4); display: none; justify-content: center; align-items: center; z-index: 500; }
+        #shield-overlay { position: absolute; inset: 0; background: rgba(52, 152, 219, 0.35); display: none; justify-content: center; align-items: center; z-index: 500; }
+        .big-x { font-size: 250px; color: white; text-shadow: 0 0 40px var(--strike-red); animation: xScale 0.4s forwards; }
+        .big-shield-msg { font-size: 42px; color: white; font-weight: 900; text-shadow: 0 0 30px var(--shield-blue); animation: xScale 0.4s forwards; text-align: center; padding: 20px; line-height: 1.2; }
+        @keyframes xScale { 0% { transform: scale(0.5); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+    <div id="strike-overlay"><div class="big-x">X</div></div>
+    <div id="shield-overlay"><div class="big-shield-msg">STRIKE SHIELD!</div></div>
+
+    <div class="header">
+        <div id="strike-icons"><span class="strike-x">X</span><span class="strike-x">X</span><span class="strike-x">X</span></div>
+        <div id="score-display">$ 0</div>
+    </div>
+    <div style="width:100%">
+        <div class="shield-row-label">STRIKE SHIELDS · RUN POOL</div>
+        <div class="shield-row">
+            <div id="shield-icons"></div>
+        </div>
+        <div style="text-align:center;font-size:10px;letter-spacing:0.5px;margin-bottom:6px;"><a href="slack-links.html" style="color:#666;text-decoration:none;border-bottom:1px dotted #444;">Share · Slack links</a></div>
+    </div>
+
+    <div id="question-text">LOADING...</div>
+    <div class="board" id="board">
+        <div class="slot" id="s1"><span class="slot-rank">1</span><span class="slot-text">---------</span><span class="slot-val">$450</span></div>
+        <div class="slot" id="s2"><span class="slot-rank">2</span><span class="slot-text">---------</span><span class="slot-val">$280</span></div>
+        <div class="slot" id="s3"><span class="slot-rank">3</span><span class="slot-text">---------</span><span class="slot-val">$150</span></div>
+        <div class="slot" id="s4"><span class="slot-rank">4</span><span class="slot-text">---------</span><span class="slot-val">$100</span></div>
+        <div class="slot" id="s5"><span class="slot-rank">5</span><span class="slot-text">---------</span><span class="slot-val">$50</span></div>
+    </div>
+    <div id="deck-area"></div>
+    <div id="end-screen">
+        <h1 id="end-msg" style="margin-bottom:0;">FINISHED</h1>
+        <h2 id="final-points" style="color:var(--accent); font-size: 44px; margin: 5px 0 20px 0;">$ 0</h2>
+
+        <div class="result-group">
+            <div class="group-label">STRIKE SHIELDS USED</div>
+            <div id="group-shields" class="pill-container"></div>
+        </div>
+
+        <div class="result-group">
+            <div class="group-label">CLEAN DODGES (+$25 EA)</div>
+            <div id="group-dodges" class="pill-container"></div>
+        </div>
+
+        <div class="result-group">
+            <div class="group-label">MISTAKES & MISSES</div>
+            <div id="group-errors" class="pill-container"></div>
+        </div>
+
+        <div class="end-actions">
+            <button type="button" onclick="initGame()" style="padding: 15px 50px; background: var(--accent); border: none; font-weight: bold; border-radius: 12px; cursor:pointer;">PLAY AGAIN</button>
+            <button type="button" class="btn-new-run" onclick="newRunWithFreshShields()" title="Reset shield pool to 5">NEW RUN · 5 SHIELDS</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    const INITIAL_SHIELDS = 5;
+    const SHIELD_POOL_KEY = 'ffgo-pass-play-shield-pool-v1';
+    const QUESTION_IDX_KEY = 'ffgo-pass-play-question-idx-v1';
+
+    const database = [
+        { q: "Why return home?", answers: { "FAMILY": 1, "REUNION": 2, "OLD FRIENDS": 3, "HOLIDAYS": 4, "MEMORIES": 5 }, decoys: ["TAXES", "DEBT", "TRAFFIC", "RENT"] },
+        { q: "Found in a kitchen?", answers: { "FRIDGE": 1, "STOVE": 2, "SINK": 3, "KNIVES": 4, "PANTRY": 5 }, decoys: ["SHAMPOO", "TOWEL", "PILLOW", "HAMMER"] }
+    ];
+
+    function loadShieldPool() {
+        try {
+            const raw = localStorage.getItem(SHIELD_POOL_KEY);
+            if (raw === null) return INITIAL_SHIELDS;
+            const n = parseInt(raw, 10);
+            if (Number.isNaN(n)) return INITIAL_SHIELDS;
+            return Math.max(0, Math.min(INITIAL_SHIELDS, n));
+        } catch {
+            return INITIAL_SHIELDS;
+        }
+    }
+
+    function persistShieldPool() {
+        try {
+            localStorage.setItem(SHIELD_POOL_KEY, String(shieldCount));
+        } catch {}
+    }
+
+    function loadQuestionIndex() {
+        try {
+            const raw = localStorage.getItem(QUESTION_IDX_KEY);
+            if (raw === null) return 0;
+            const n = parseInt(raw, 10);
+            if (Number.isNaN(n)) return 0;
+            const len = database.length;
+            return ((n % len) + len) % len;
+        } catch {
+            return 0;
+        }
+    }
+
+    function persistQuestionIndex(idx) {
+        try {
+            localStorage.setItem(QUESTION_IDX_KEY, String(idx));
+        } catch {}
+    }
+
+    function newRunWithFreshShields() {
+        shieldCount = INITIAL_SHIELDS;
+        persistShieldPool();
+        persistQuestionIndex(0);
+        initGame();
+    }
+
+    let currentQuestion, deck, strikes, shieldCount, currentIdx, found, totalScore, swipeLog;
+
+    function buildShieldIcons() {
+        const wrap = document.getElementById('shield-icons');
+        wrap.innerHTML = '';
+        for (let i = 0; i < INITIAL_SHIELDS; i++) {
+            const s = document.createElement('span');
+            s.className = 'shield-icon';
+            s.textContent = '🛡';
+            s.title = 'Strike shield';
+            wrap.appendChild(s);
+        }
+    }
+
+    function updateShieldIcons() {
+        document.querySelectorAll('.shield-icon').forEach((el, i) => {
+            el.classList.toggle('active', i < shieldCount);
+        });
+    }
+
+    /** Returns true if a real strike was recorded (no shield left). */
+    function consumeStrikeShield(reasonLabel) {
+        if (shieldCount > 0) {
+            shieldCount--;
+            updateShieldIcons();
+            showShieldOverlay();
+            showFloatingText('STRIKE SHIELD!', 'var(--shield-blue)');
+            swipeLog.push({ val: reasonLabel, type: 'shield', result: 'absorb' });
+            persistShieldPool();
+            return false;
+        }
+        return true;
+    }
+
+    function showShieldOverlay() {
+        const el = document.getElementById('shield-overlay');
+        el.style.display = 'flex';
+        setTimeout(() => { el.style.display = 'none'; }, 650);
+    }
+
+    function initGame() {
+        document.getElementById('end-screen').style.display = 'none';
+        document.getElementById('game-container').classList.remove('on-fire');
+        document.querySelectorAll('.strike-x').forEach(x => x.classList.remove('active'));
+        document.querySelectorAll('.slot').forEach(s => { s.classList.remove('revealed'); s.querySelector('.slot-text').innerText = '---------'; });
+
+        buildShieldIcons();
+        shieldCount = loadShieldPool();
+        updateShieldIcons();
+
+        const qi = loadQuestionIndex();
+        currentQuestion = database[qi];
+        document.getElementById('question-text').innerText = currentQuestion.q;
+        deck = [...Object.keys(currentQuestion.answers), ...currentQuestion.decoys].sort(() => Math.random() - 0.5);
+
+        strikes = 0; currentIdx = 0; found = 0; totalScore = 0; swipeLog = [];
+        updateScore();
+        renderStack();
+    }
+
+    function renderStack() {
+        const deckArea = document.getElementById('deck-area');
+        deckArea.innerHTML = '';
+        let cardsRemaining = deck.length - currentIdx;
+        let layers = Math.min(cardsRemaining - 2, 3);
+        for (let i = layers; i > 0; i--) {
+            const l = document.createElement('div'); l.className = 'stack-item deck-layer';
+            l.style.transform = `translateY(${20 + (i * 5)}px) scale(${1 - (i * 0.03)})`;
+            l.style.zIndex = 10 - i; deckArea.appendChild(l);
+        }
+        if (currentIdx + 1 < deck.length) {
+            const p = createCard(deck[currentIdx + 1], 'peek', currentIdx + 2);
+            p.style.transform = `translateY(10px) scale(0.97)`; deckArea.appendChild(p);
+        }
+        if (currentIdx < deck.length) {
+            const a = createCard(deck[currentIdx], 'active', currentIdx + 1);
+            a.style.transform = `translateY(0px)`; deckArea.appendChild(a);
+            initDrag(a);
+        }
+    }
+
+    function createCard(text, type, num) {
+        const d = document.createElement('div'); d.className = `stack-item card ${type}`;
+        d.innerHTML = `<div class="card-label">${text}</div><div class="card-counter">${num} / ${deck.length}</div>`;
+        return d;
+    }
+
+    function initDrag(el) {
+        let x = 0, y = 0;
+        interact(el).draggable({
+            listeners: {
+                move(e) {
+                    x += e.dx; y += e.dy;
+                    const lift = Math.abs(Math.min(y, 0)) / 5;
+                    e.target.style.boxShadow = `0 ${10+lift}px ${20+lift}px rgba(0,0,0,0.4)`;
+                    e.target.style.transform = `translate(${x}px, ${y}px) rotate(${x/15}deg) scale(${1 + lift/500})`;
+                },
+                end(e) {
+                    if (y < -110) resolve(true, e.target);
+                    else if (y > 110) resolve(false, e.target);
+                    else { e.target.style.transition = 'all 0.2s'; e.target.style.transform = `translate(0,0)`; x = 0; y = 0; }
+                }
+            }
+        });
+    }
+
+    function resolve(isKeep, cardEl) {
+        const val = cardEl.querySelector('.card-label').innerText;
+        const rank = currentQuestion.answers[val];
+        const pts = [450, 280, 150, 100, 50];
+
+        if (isKeep) {
+            if (rank) {
+                const slot = document.getElementById(`s${rank}`);
+                cardEl.style.transition = 'all 0.3s ease-in';
+                cardEl.style.transform = `translateY(-400px) scale(0.1)`;
+                totalScore += pts[rank-1]; updateScore();
+                setTimeout(() => { slot.querySelector('.slot-text').innerText = val; slot.classList.add('revealed'); }, 150);
+                found++;
+                if (found >= 4) document.getElementById('game-container').classList.add('on-fire');
+                swipeLog.push({ val, type: 'answer', result: 'keep' });
+                setTimeout(nextCard, 150);
+            } else {
+                const countsAsStrike = consumeStrikeShield(val + ' (wrong PLAY)');
+                if (countsAsStrike) {
+                    strikes++; updateStrikeIcons(); showStrikeOverlay();
+                    swipeLog.push({ val, type: 'decoy', result: 'strike' });
+                }
+                nextCard();
+            }
+        } else {
+            if (!rank) {
+                totalScore += 25; updateScore(); showFloatingText('+$25', 'var(--pass-green)');
+                swipeLog.push({ val, type: 'decoy', result: 'dodge' });
+            } else {
+                showFloatingText('MISSED', 'var(--strike-red)');
+                const countsAsStrike = consumeStrikeShield(val + ' (wrong PASS)');
+                if (countsAsStrike) {
+                    strikes++; updateStrikeIcons(); showStrikeOverlay();
+                    swipeLog.push({ val, type: 'answer', result: 'miss' });
+                }
+            }
+            nextCard();
+        }
+    }
+
+    function updateScore() { document.getElementById('score-display').innerText = `$ ${totalScore}`; }
+
+    function showFloatingText(t, c) {
+        const f = document.createElement('div');
+        f.className = 'floating-text';
+        f.innerText = t;
+        f.style.color = c;
+        document.getElementById('game-container').appendChild(f);
+        setTimeout(() => f.remove(), 800);
+    }
+
+    function nextCard() {
+        currentIdx++;
+        const speed = 400 - (found * 50);
+        if (found === 5) setTimeout(() => endGame('PERFECT BOARD!'), speed);
+        else if (strikes >= 3) setTimeout(() => endGame('STRIKE OUT'), speed);
+        else if (currentIdx >= deck.length) setTimeout(() => endGame('OUT OF CARDS'), speed);
+        else renderStack();
+    }
+
+    function updateStrikeIcons() {
+        const icons = document.querySelectorAll('.strike-x');
+        if (strikes > 0 && strikes <= 3) icons[strikes - 1].classList.add('active');
+    }
+
+    function showStrikeOverlay() {
+        const overlay = document.getElementById('strike-overlay');
+        overlay.style.display = 'flex';
+        setTimeout(() => { overlay.style.display = 'none'; }, 700);
+    }
+
+    function endGame(msg) {
+        document.getElementById('end-screen').style.display = 'flex';
+        document.getElementById('end-msg').innerText = msg;
+        document.getElementById('final-points').innerText = `$ ${totalScore}`;
+
+        const shieldCont = document.getElementById('group-shields');
+        const dodgeCont = document.getElementById('group-dodges');
+        const errorCont = document.getElementById('group-errors');
+        shieldCont.innerHTML = '';
+        dodgeCont.innerHTML = '';
+        errorCont.innerHTML = '';
+
+        swipeLog.forEach(item => {
+            const pill = document.createElement('div');
+            pill.className = 'pill';
+            pill.innerText = item.val;
+
+            if (item.result === 'absorb' && item.type === 'shield') {
+                pill.classList.add('shield');
+                shieldCont.appendChild(pill);
+            } else if (item.result === 'dodge') {
+                pill.classList.add('success');
+                dodgeCont.appendChild(pill);
+            } else if (item.result === 'strike' || item.result === 'miss') {
+                pill.classList.add('fail');
+                pill.innerText += item.result === 'miss' ? ' (MISSED)' : ' (X)';
+                errorCont.appendChild(pill);
+            }
+        });
+
+        if (shieldCont.innerHTML === '') shieldCont.innerHTML = '<span style="font-size:11px; opacity:0.3">None</span>';
+        if (dodgeCont.innerHTML === '') dodgeCont.innerHTML = '<span style="font-size:11px; opacity:0.3">None</span>';
+        if (errorCont.innerHTML === '') errorCont.innerHTML = '<span style="font-size:11px; opacity:0.3">No mistakes!</span>';
+
+        const qi = loadQuestionIndex();
+        persistQuestionIndex((qi + 1) % database.length);
+    }
+
+    initGame();
+</script>
+</body>
+</html>

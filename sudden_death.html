@@ -3,7 +3,15 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>Family Feud · One Swap (4 Tiles)</title>
+  <title>Family Feud · Sudden Death (4 Tiles)</title>
+  <meta name="description" content="One swap to fix the board. Five Strike Shields for your whole run — wrong swap spends a shield or reveals the board." />
+  <meta property="og:title" content="Family Feud · Sudden Death — one swap" />
+  <meta property="og:description" content="One swap to fix the board. Strike Shields absorb wrong swaps until you run out." />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="FFGO Rank It" />
+  <meta name="twitter:card" content="summary" />
+  <meta name="twitter:title" content="Family Feud · Sudden Death — one swap" />
+  <meta name="twitter:description" content="One swap to fix the board. Strike Shields absorb wrong swaps until you run out." />
   <style>
     :root {
       --bg: #141414;
@@ -18,6 +26,8 @@
       --gold: #e8c030;
       --gold-text: #1a1500;
       --red: #d74a4a;
+      --shield-blue: #3498db;
+      --shield-glow: rgba(52, 152, 219, 0.45);
     }
     * { box-sizing: border-box; }
     html, body {
@@ -75,6 +85,53 @@
     }
     .swap-badge.used .dot { background: var(--text-3); }
     .swap-badge.used { color: var(--text-3); }
+
+    .shield-strip {
+      display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+      margin: 10px 0 4px;
+    }
+    .shield-strip-label {
+      font-size: 10px; letter-spacing: 1.2px; font-weight: 700;
+      color: var(--text-3); text-transform: uppercase;
+    }
+    #shield-icons { display: flex; gap: 5px; flex-wrap: wrap; }
+    .shield-icon {
+      font-size: 18px; line-height: 1; opacity: 0.22; filter: grayscale(1);
+      transition: transform 0.2s, opacity 0.2s, filter 0.2s;
+    }
+    .shield-icon.active {
+      opacity: 1; filter: none;
+      text-shadow: 0 0 10px var(--shield-glow);
+    }
+
+    #shield-overlay {
+      position: fixed; inset: 0;
+      background: rgba(52, 152, 219, 0.32);
+      display: none; align-items: center; justify-content: center;
+      z-index: 9999; pointer-events: none;
+    }
+    #shield-overlay.visible { display: flex; }
+    .shield-overlay-msg {
+      font-size: clamp(28px, 8vw, 42px); font-weight: 800; color: #fff;
+      text-shadow: 0 0 28px var(--shield-blue);
+      text-align: center; padding: 20px; letter-spacing: 0.5px;
+      animation: shieldPop 0.45s ease-out;
+    }
+    @keyframes shieldPop {
+      from { transform: scale(0.7); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
+    }
+    .floating-shield-txt {
+      position: fixed; left: 50%; top: 38%; transform: translateX(-50%);
+      font-size: clamp(22px, 6vw, 30px); font-weight: 800; color: var(--shield-blue);
+      pointer-events: none; z-index: 9998;
+      animation: floatShield 0.85s ease-out forwards;
+      text-shadow: 0 0 16px var(--shield-glow);
+    }
+    @keyframes floatShield {
+      from { opacity: 1; transform: translateX(-50%) translateY(0); }
+      to { opacity: 0; transform: translateX(-50%) translateY(-72px); }
+    }
 
     .card {
       background: var(--surface); border: 1px solid var(--stroke);
@@ -202,10 +259,12 @@
   </style>
 </head>
 <body>
+  <div id="shield-overlay" aria-hidden="true"><div class="shield-overlay-msg">STRIKE SHIELD!</div></div>
   <div class="app" id="app"></div>
 
   <script>
     const TILE_COUNT = 4;
+    const INITIAL_SHIELDS = 5;
     const QUESTIONS_RAW = [
       { question: "What's the worst thing a cop could find in your car?", category: "Wild Card", answers: [
         { answer: "Drugs", percentage: 60 },
@@ -345,7 +404,12 @@
     };
 
     function makeInitialState() {
-      return { ...startQuestion(0), questionsCleared: 0, questionsLost: 0 };
+      return {
+        ...startQuestion(0),
+        questionsCleared: 0,
+        questionsLost: 0,
+        shieldsRemaining: INITIAL_SHIELDS,
+      };
     }
 
     function loadState() {
@@ -354,11 +418,16 @@
         if (!raw) return null;
         const p = JSON.parse(raw);
         if (typeof p.questionIndex !== "number") return null;
+        if (typeof p.shieldsRemaining !== "number" || p.shieldsRemaining < 0)
+          p.shieldsRemaining = INITIAL_SHIELDS;
         return p;
       } catch { return null; }
     }
     function saveState() {
-      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch {}
+      try {
+        const { _shieldFx, ...persist } = state;
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(persist));
+      } catch {}
     }
 
     function allPairs(n) {
@@ -412,10 +481,40 @@
     function checkResult() {
       const expected = expectedForCurrent();
       const allCorrect = state.tiles.every((t, i) => t.percentage === expected[i]);
-      state.swapResult = allCorrect ? "correct" : "wrong";
-      state.status = allCorrect ? "won" : "lost";
-      if (allCorrect) state.questionsCleared += 1;
-      else state.questionsLost += 1;
+      if (allCorrect) {
+        state.swapResult = "correct";
+        state.status = "won";
+        state.questionsCleared += 1;
+        return;
+      }
+      if (state.shieldsRemaining > 0) {
+        state.shieldsRemaining -= 1;
+        const idx = state.questionIndex;
+        const preserved = {
+          shieldsRemaining: state.shieldsRemaining,
+          questionsCleared: state.questionsCleared,
+          questionsLost: state.questionsLost,
+        };
+        Object.assign(state, startQuestion(idx), preserved);
+        state.status = "playing";
+        state.swapResult = null;
+        state._shieldFx = true;
+        return;
+      }
+      state.swapResult = "wrong";
+      state.status = "lost";
+      state.questionsLost += 1;
+    }
+
+    function showShieldFeedback() {
+      const ov = document.getElementById("shield-overlay");
+      ov.classList.add("visible");
+      setTimeout(() => ov.classList.remove("visible"), 650);
+      const msg = document.createElement("div");
+      msg.className = "floating-shield-txt";
+      msg.textContent = "STRIKE SHIELD!";
+      document.body.appendChild(msg);
+      setTimeout(() => msg.remove(), 900);
     }
 
     function render() {
@@ -426,7 +525,7 @@
 
       const nav = el("div", "top-nav");
       const navHTML = document.createElement("span");
-      navHTML.innerHTML = `<a href="index.html">← 5-tile Lock-It-In mode</a>`;
+      navHTML.innerHTML = `<a href="index.html">← Lock-It-In</a> · <a href="slack-links.html">Slack links</a>`;
       nav.appendChild(navHTML);
       app.appendChild(nav);
 
@@ -453,6 +552,24 @@
       badge.appendChild(badgeText);
       meta.appendChild(badge);
       app.appendChild(meta);
+
+      const shieldStrip = el("div", "shield-strip");
+      shieldStrip.appendChild(span("shield-strip-label", "Strike shields"));
+      const shieldIcons = el("div", null);
+      shieldIcons.id = "shield-icons";
+      for (let i = 0; i < INITIAL_SHIELDS; i++) {
+        const s = document.createElement("span");
+        s.className = "shield-icon";
+        s.textContent = "🛡";
+        s.title = "Strike shield";
+        shieldIcons.appendChild(s);
+      }
+      shieldStrip.appendChild(shieldIcons);
+      app.appendChild(shieldStrip);
+      const sr = typeof state.shieldsRemaining === "number" ? state.shieldsRemaining : INITIAL_SHIELDS;
+      shieldIcons.querySelectorAll(".shield-icon").forEach((node, i) => {
+        node.classList.toggle("active", i < sr);
+      });
 
       const card = el("div", "card");
       card.appendChild(span("question", q.question));
@@ -509,7 +626,7 @@
         tag("h3", null, "How to play"),
         (() => {
           const p = el("div", "help");
-          p.innerHTML = "Drag a tile and the other tiles slide to preview the swap. Drop it on the right one and you win — drop on the wrong one and you lose. <strong>You only get one swap.</strong>";
+          p.innerHTML = "Drag a tile and the other tiles slide to preview the swap. Drop on the correct pair and you win. <strong>One swap per puzzle.</strong> You have <strong>" + INITIAL_SHIELDS + " Strike Shields for your whole run</strong> — spent shields never refill until <strong>New Game</strong>. A wrong swap uses one shield and reshuffles the same question; with no shields left, the board is revealed and the round counts as lost.";
           return p;
         })(),
       ]);
@@ -517,6 +634,14 @@
       helpRow.appendChild(helpCol);
       helpRow.appendChild(button("btn btn-ghost", "New Game", handleNewGame));
       app.appendChild(helpRow);
+
+      if (state._shieldFx) {
+        delete state._shieldFx;
+        requestAnimationFrame(() => {
+          showShieldFeedback();
+          saveState();
+        });
+      }
     }
 
     function wireDrag(node, slotIdx) {
@@ -666,12 +791,22 @@
 
     function handleNextQuestion() {
       const nextIdx = (state.questionIndex + 1) % QUESTIONS_RAW.length;
-      Object.assign(state, startQuestion(nextIdx));
+      const preserved = {
+        shieldsRemaining: state.shieldsRemaining,
+        questionsCleared: state.questionsCleared,
+        questionsLost: state.questionsLost,
+      };
+      Object.assign(state, startQuestion(nextIdx), preserved);
       saveState();
       render();
     }
     function handleRetry() {
-      Object.assign(state, startQuestion(state.questionIndex));
+      const preserved = {
+        shieldsRemaining: state.shieldsRemaining,
+        questionsCleared: state.questionsCleared,
+        questionsLost: state.questionsLost,
+      };
+      Object.assign(state, startQuestion(state.questionIndex), preserved);
       saveState();
       render();
     }

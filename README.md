@@ -6,10 +6,16 @@ Family Feud-style ranking mini-game. Pure static HTML/CSS/JS, no build step. Ope
 
 - **`index.html`** — 5-tile Lock-It-In mode. Drag to re-rank all 5 answers, 3 strikes to clear the board.
 - **`drag-n-drop.html`** — 4-tile Drag-n-Drop mode. Interactive pointer-based drag; the tile follows the cursor, the hover target slides to preview the swap.
-- **`sudden_death.html`** — 4-tile Sudden Death mode. One swap, one chance — solve it or lose the round.
+- **`sudden_death.html`** — 4-tile Sudden Death mode. One swap, one chance — solve it or lose the round (Strike Shields across your run until New Game).
+- **`pass_or_play_with_shields.html`** — Tactical swipe Pass or Play prototype with Strike Shields.
+- **`slack-links.html`** — **Pass or Play** and **Sudden Death** only: public URLs to copy into Slack.
 
 ## Live
 
-- 5-tile: https://migueltartaj-io.github.io/ffgo-rank-it/
+- Hub / Lock-It-In: https://migueltartaj-io.github.io/ffgo-rank-it/
 - Drag-n-Drop: https://migueltartaj-io.github.io/ffgo-rank-it/drag-n-drop.html
 - Sudden Death: https://migueltartaj-io.github.io/ffgo-rank-it/sudden_death.html
+- Pass or Play (shields): https://migueltartaj-io.github.io/ffgo-rank-it/pass_or_play_with_shields.html
+- **Slack links (Pass or Play + Sudden Death only):** https://migueltartaj-io.github.io/ffgo-rank-it/slack-links.html
+
+`slack-links.html` lists only those two prototypes. Pasting each URL into Slack should unfurl using the `og:` meta tags on each page.

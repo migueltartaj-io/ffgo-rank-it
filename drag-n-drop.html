@@ -3,7 +3,15 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>Family Feud · One Swap (4 Tiles)</title>
+  <title>Family Feud · Drag-n-Drop (4 Tiles)</title>
+  <meta name="description" content="Pointer drag ranking: tiles follow your finger, targets slide to preview swaps. Family Feud-style survey order." />
+  <meta property="og:title" content="Family Feud · Drag-n-Drop (4 tiles)" />
+  <meta property="og:description" content="Pointer drag ranking with live swap preview. Put four answers in survey order." />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="FFGO Rank It" />
+  <meta name="twitter:card" content="summary" />
+  <meta name="twitter:title" content="Family Feud · Drag-n-Drop (4 tiles)" />
+  <meta name="twitter:description" content="Pointer drag ranking with live swap preview. Put four answers in survey order." />
   <style>
     :root {
       --bg: #141414;
@@ -384,7 +392,7 @@
 
       const nav = el("div", "top-nav");
       const navHTML = document.createElement("span");
-      navHTML.innerHTML = `<a href="index.html">← 5-tile Lock-It-In mode</a>`;
+      navHTML.innerHTML = `<a href="index.html">← Lock-It-In</a> · <a href="slack-links.html">Slack links</a>`;
       nav.appendChild(navHTML);
       app.appendChild(nav);
 
