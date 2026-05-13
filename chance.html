@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Family Feud - Chance Master</title>
-    <!-- Mod: coins direct reward → team/opponent line + OK only (no Collect modal). Spins & Strike Shield removed from pool. -->
+    <!-- Chance pool: Team Reels, Team Reels 2, Team Reels 3 only (minigames → Collect). -->
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@700&family=Oswald:wght@500;700&family=Orbitron:wght@700&display=swap');
@@ -212,6 +212,30 @@
 
         .podium-light { width: 40px; height: 10px; background: #333; border-radius: 10px; margin-top: 15px; }
         .podium-light.active { background: var(--feud-green); box-shadow: 0 0 20px var(--feud-green); }
+        .tr2-stand { display: flex; flex-direction: column; align-items: center; gap: 6px; min-width: 56px; }
+        .tr2-stand-btn { font-size: 11px; letter-spacing: 0.5px; padding: 8px 10px; border-radius: 10px; cursor: pointer; border: none; font-weight: 900; text-transform: uppercase; }
+        .tr2-stand-btn:disabled { opacity: 0.35; cursor: not-allowed; filter: grayscale(0.5); }
+        .tr2-reveal { font-family: 'Orbitron', sans-serif; color: #fdb813; text-shadow: 0 0 8px rgba(253,184,19,0.5); min-height: 26px; line-height: 1.2; text-align: center; }
+        .tr2-reveal.revealed { color: #fff; font-size: 1rem; }
+        .tr2-pick-spinner {
+            font-family: 'Orbitron', sans-serif;
+            font-size: clamp(3rem, 12vw, 4.5rem);
+            font-weight: 900;
+            line-height: 1;
+            color: #ff4500;
+            text-shadow: 0 0 24px rgba(255, 69, 0, 0.55);
+            min-height: 1.15em;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 0.35rem;
+            transition: color 0.2s, text-shadow 0.2s;
+        }
+        .tr2-pick-spinner.rolling { filter: brightness(1.1); }
+        .tr2-pick-spinner.locked {
+            color: #4ade80;
+            text-shadow: 0 0 28px rgba(74, 222, 128, 0.55);
+        }
         .studio-flash { animation: flash-anim 0.5s ease-out; }
         @keyframes flash-anim { 0% { background: white; } 100% { background: radial-gradient(circle at center, #003d82 0%, var(--feud-dark) 100%); } }
         .shake-impact { animation: shake-imp 0.15s both; }
@@ -239,8 +263,9 @@
         <div id="debugPanel" class="debug-panel shadow-2xl">
             <div class="text-[10px] uppercase text-gray-500 mb-3 font-bold tracking-widest text-center border-b border-gray-800 pb-1">Cheat Engine</div>
             <button onclick="setForce('random')" class="debug-btn active" id="btn-random">🎲 Random Loop</button>
-            <button onclick="setForce('coins')" class="debug-btn" id="btn-coins">💰 Coins</button>
             <button onclick="setForce('familyPodium')" class="debug-btn" id="btn-familyPodium">🎰 Team Reels</button>
+            <button onclick="setForce('teamReels2')" class="debug-btn" id="btn-teamReels2">🎰 Team Reels 2</button>
+            <button onclick="setForce('teamReels3')" class="debug-btn" id="btn-teamReels3">🎪 Team Reels 3</button>
         </div>
     </div>
 
@@ -256,17 +281,15 @@
             <div id="mainCard" class="card-inner">
                 <div class="card-front"><div class="w-20 h-20 rounded-full bg-yellow-400 flex items-center justify-center border-4 border-white shadow-xl"><span class="text-5xl text-blue-900 font-black">?</span></div></div>
                 <div class="card-back p-6 text-center">
-                    <p id="directTeamLine" class="hidden text-base font-black uppercase text-blue-800 tracking-tight mb-2 leading-tight"></p>
                     <div id="routingIcon" class="mb-4"></div>
                     <h2 id="routingTitle" class="text-2xl font-black uppercase italic text-blue-900 leading-tight">...</h2>
-                    <div id="routingValue" class="text-lg font-bold uppercase tracking-widest text-blue-500 mt-2 hidden"></div>
                 </div>
             </div>
         </div>
     </section>
 
     <!-- TEAM REELS SCREEN -->
-    <section id="familyPodiumScreen" class="screen">
+    <section id="familyPodiumScreen" class="screen pb-32 z-[500]">
         <h2 class="text-4xl font-black italic mb-2 text-yellow-400 uppercase tracking-tighter">TEAM REELS</h2>
         <div id="reelsLedScoreboard" class="led-scoreboard">Subtotal: $0</div>
         
@@ -290,15 +313,90 @@
         <p id="podiumStatus" class="mt-6 text-blue-200 font-bold uppercase tracking-widest opacity-0">Surveying Team...</p>
     </section>
 
-    <!-- COINS: team / opponent message + OK (no Collect flow) -->
-    <section id="coinOkScreen" class="screen bg-black/85 backdrop-blur-md z-[2000]">
-        <div class="animate-bounce-in bg-white rounded-[2.5rem] p-10 md:p-12 text-blue-900 flex flex-col items-center w-[90%] max-w-sm text-center border-4 border-yellow-400">
-            <p id="coinOkHeadline" class="text-3xl sm:text-4xl font-black uppercase italic text-blue-900 leading-tight mb-8">...</p>
-            <button type="button" onclick="confirmCoinOk()" class="btn-feud-green w-full py-6 rounded-2xl text-3xl shadow-xl">OK</button>
+    <!-- TEAM REELS 2 — survey picks tap count (1–5), then tap that many stands -->
+    <section id="teamReels2Screen" class="screen pb-32 z-[500]">
+        <h2 class="text-4xl font-black italic mb-1 text-yellow-400 uppercase tracking-tighter">TEAM REELS 2</h2>
+        <div id="tr2PickSpinner" class="tr2-pick-spinner" aria-live="polite">—</div>
+        <p id="tr2Instruction" class="text-blue-200 font-bold uppercase tracking-widest text-center text-sm mb-1">Surveying picks…</p>
+        <p id="tr2TapCounter" class="text-yellow-400 font-black text-xl mb-4 font-[Orbitron,sans-serif]">…</p>
+        <div id="tr2LedScoreboard" class="led-scoreboard led-active mb-3">Running total: $0</div>
+
+        <div class="family-podium-desk flex-wrap justify-center gap-y-3">
+            <div class="tr2-stand">
+                <div class="family-avatar" id="tr2-avatar-0">👨‍👩‍👧</div>
+                <div class="podium-light" id="tr2-light-0"></div>
+                <button type="button" class="tr2-stand-btn btn-feud-red" id="tr2-btn-0" onclick="onTr2Stand(0)">TAP</button>
+                <div id="tr2-reveal-0" class="tr2-reveal">?</div>
+            </div>
+            <div class="tr2-stand">
+                <div class="family-avatar" id="tr2-avatar-1">👨‍🦳</div>
+                <div class="podium-light" id="tr2-light-1"></div>
+                <button type="button" class="tr2-stand-btn btn-feud-red" id="tr2-btn-1" onclick="onTr2Stand(1)">TAP</button>
+                <div id="tr2-reveal-1" class="tr2-reveal">?</div>
+            </div>
+            <div class="tr2-stand">
+                <div class="family-avatar" id="tr2-avatar-2">👱‍♂️</div>
+                <div class="podium-light" id="tr2-light-2"></div>
+                <button type="button" class="tr2-stand-btn btn-feud-red" id="tr2-btn-2" onclick="onTr2Stand(2)">TAP</button>
+                <div id="tr2-reveal-2" class="tr2-reveal">?</div>
+            </div>
+            <div class="tr2-stand">
+                <div class="family-avatar" id="tr2-avatar-3">🧔</div>
+                <div class="podium-light" id="tr2-light-3"></div>
+                <button type="button" class="tr2-stand-btn btn-feud-red" id="tr2-btn-3" onclick="onTr2Stand(3)">TAP</button>
+                <div id="tr2-reveal-3" class="tr2-reveal">?</div>
+            </div>
+            <div class="tr2-stand">
+                <div class="family-avatar" id="tr2-avatar-4">👵</div>
+                <div class="podium-light" id="tr2-light-4"></div>
+                <button type="button" class="tr2-stand-btn btn-feud-red" id="tr2-btn-4" onclick="onTr2Stand(4)">TAP</button>
+                <div id="tr2-reveal-4" class="tr2-reveal">?</div>
+            </div>
         </div>
     </section>
 
-    <!-- REWARD MODAL (Team Reels payout only) -->
+    <!-- TEAM REELS 3 — classic: always tap 3 stands (no pick spinner) -->
+    <section id="teamReels3Screen" class="screen pb-32 z-[500]">
+        <h2 class="text-4xl font-black italic mb-1 text-yellow-400 uppercase tracking-tighter">TEAM REELS 3</h2>
+        <p id="tr3Instruction" class="text-blue-200 font-bold uppercase tracking-widest text-center text-sm mb-1">Tap on 3 stands</p>
+        <p id="tr3TapCounter" class="text-yellow-400 font-black text-xl mb-4 font-[Orbitron,sans-serif]">0 / 3</p>
+        <div id="tr3LedScoreboard" class="led-scoreboard led-active mb-3">Running total: $0</div>
+
+        <div class="family-podium-desk flex-wrap justify-center gap-y-3">
+            <div class="tr2-stand">
+                <div class="family-avatar" id="tr3-avatar-0">👨‍👩‍👧</div>
+                <div class="podium-light" id="tr3-light-0"></div>
+                <button type="button" class="tr2-stand-btn btn-feud-red" id="tr3-btn-0" onclick="onTr3Stand(0)">TAP</button>
+                <div id="tr3-reveal-0" class="tr2-reveal">?</div>
+            </div>
+            <div class="tr2-stand">
+                <div class="family-avatar" id="tr3-avatar-1">👨‍🦳</div>
+                <div class="podium-light" id="tr3-light-1"></div>
+                <button type="button" class="tr2-stand-btn btn-feud-red" id="tr3-btn-1" onclick="onTr3Stand(1)">TAP</button>
+                <div id="tr3-reveal-1" class="tr2-reveal">?</div>
+            </div>
+            <div class="tr2-stand">
+                <div class="family-avatar" id="tr3-avatar-2">👱‍♂️</div>
+                <div class="podium-light" id="tr3-light-2"></div>
+                <button type="button" class="tr2-stand-btn btn-feud-red" id="tr3-btn-2" onclick="onTr3Stand(2)">TAP</button>
+                <div id="tr3-reveal-2" class="tr2-reveal">?</div>
+            </div>
+            <div class="tr2-stand">
+                <div class="family-avatar" id="tr3-avatar-3">🧔</div>
+                <div class="podium-light" id="tr3-light-3"></div>
+                <button type="button" class="tr2-stand-btn btn-feud-red" id="tr3-btn-3" onclick="onTr3Stand(3)">TAP</button>
+                <div id="tr3-reveal-3" class="tr2-reveal">?</div>
+            </div>
+            <div class="tr2-stand">
+                <div class="family-avatar" id="tr3-avatar-4">👵</div>
+                <div class="podium-light" id="tr3-light-4"></div>
+                <button type="button" class="tr2-stand-btn btn-feud-red" id="tr3-btn-4" onclick="onTr3Stand(4)">TAP</button>
+                <div id="tr3-reveal-4" class="tr2-reveal">?</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- REWARD MODAL (Team Reels / Team Reels 2 / Team Reels 3 payout) -->
     <section id="rewardScreen" class="screen bg-black/85 backdrop-blur-md z-[2000]">
         <div class="animate-bounce-in bg-white rounded-[2.5rem] p-12 text-blue-900 flex flex-col items-center w-[90%] max-w-sm text-center border-4 border-yellow-400">
             <div id="rewardIcon" class="mt-4 mb-12 transform scale-150"></div>
@@ -319,17 +417,26 @@
         let state = {
             coins: 24000,
             currentReward: null, forcedRoute: null,
-            isSpinning: false, miniGamePayout: 0,
-            directWinnerLine: null
+            isSpinning: false, miniGamePayout: 0
         };
 
 
         const screens = {
             draw: document.getElementById('drawScreen'),
-            coinOk: document.getElementById('coinOkScreen'),
             reward: document.getElementById('rewardScreen'),
-            familyPodium: document.getElementById('familyPodiumScreen')
+            familyPodium: document.getElementById('familyPodiumScreen'),
+            teamReels2: document.getElementById('teamReels2Screen'),
+            teamReels3: document.getElementById('teamReels3Screen')
         };
+
+        let tr2SessionId = 0;
+
+        let tr2State = {
+            values: [], revealed: [], taps: 0, running: 0, done: false,
+            allowedTaps: 3, phase: 'idle', rollTimer: null
+        };
+
+        let tr3State = { values: [], revealed: [], taps: 0, running: 0, done: false };
 
         function updateHUD(immediate = true) {
             if (immediate) {
@@ -415,50 +522,39 @@
             requestAnimationFrame(animateConfetti);
         }
 
+        /** Outcomes after flipping the chance card (uniform random unless debug forces one). */
+        const CHANCE_POOL = [
+            { id: 'familyPodium', title: 'Team Reels', icon: '🎰', isGame: true },
+            { id: 'teamReels2', title: 'Team Reels 2', icon: '🎯', isGame: true },
+            { id: 'teamReels3', title: 'Team Reels 3', icon: '🎪', isGame: true }
+        ];
+
         function handleInitialFlip() {
             if (document.getElementById('mainCard').classList.contains('is-flipped')) return;
-            
-            const pool = [
-                { id: 'coins', title: 'Coins', icon: '💰', val: 500, label: '500 Coins' },
-                { id: 'familyPodium', title: 'Team Reels', icon: '🎰', isGame: true }
-            ];
 
-            const route = state.forcedRoute ? pool.find(r => r.id === state.forcedRoute) : pool[Math.floor(Math.random() * pool.length)];
-            state.currentReward = route;
-            state.directWinnerLine = null;
-            const dtl = document.getElementById('directTeamLine');
-            if (route.id === 'coins') {
-                state.directWinnerLine = (Math.random() < 0.5) ? 'Your team won:' : 'Your opponent won:';
-                dtl.innerText = state.directWinnerLine;
-                dtl.classList.remove('hidden');
+            let route;
+            if (state.forcedRoute) {
+                route = CHANCE_POOL.find(r => r.id === state.forcedRoute);
+                if (!route) route = CHANCE_POOL[Math.floor(Math.random() * CHANCE_POOL.length)];
             } else {
-                dtl.classList.add('hidden');
-                dtl.innerText = '';
+                route = CHANCE_POOL[Math.floor(Math.random() * CHANCE_POOL.length)];
             }
+            state.currentReward = route;
 
             document.getElementById('routingTitle').innerText = route.title;
             document.getElementById('routingIcon').innerHTML = `<span class="text-7xl">${route.icon}</span>`;
-            
-            const valEl = document.getElementById('routingValue');
-            if (!route.isGame) {
-                valEl.innerText = route.label;
-                valEl.classList.remove('hidden');
-            } else {
-                valEl.classList.add('hidden');
-            }
-            
+
             document.getElementById('mainCard').classList.add('is-flipped');
             setTimeout(() => {
                 if (route.id === 'familyPodium') startFamilyPodium();
-                else {
-                    document.getElementById('coinOkHeadline').innerText = state.directWinnerLine || '';
-                    showScreen('coinOk');
-                }
+                else if (route.id === 'teamReels2') startTeamReels2();
+                else if (route.id === 'teamReels3') startTeamReels3();
             }, 1200);
         }
 
         // --- TEAM REELS GAME ---
         function startFamilyPodium() {
+            document.getElementById('calcOverlay').style.display = 'none';
             showScreen('familyPodium');
             state.isSpinning = false;
             document.getElementById('spinBtn').style.display = 'block';
@@ -565,19 +661,173 @@
             }
         }
 
-        function confirmCoinOk() {
-            const r = state.currentReward;
-            if (!r || r.id !== 'coins') return;
-            const oldC = state.coins;
-            state.coins += r.val;
-            tallyValue('ui-coins', oldC, state.coins);
-            document.getElementById('mainCard').classList.remove('is-flipped');
-            const d = document.getElementById('directTeamLine');
-            if (d) { d.classList.add('hidden'); d.innerText = ''; }
-            state.directWinnerLine = null;
-            state.currentReward = null;
-            showScreen('draw');
-            updateHUD(true);
+        // --- TEAM REELS 2 (survey picks 1–5 taps, then tap that many stands) ---
+        const TR2_COIN_POOL = [3000, 5000, 8000, 12000, 18000, 25000];
+        const TR2_ROLL_MS = 1000;
+        const TR2_TICK_MS = 45;
+
+        function startTeamReels2() {
+            document.getElementById('calcOverlay').style.display = 'none';
+            if (tr2State.rollTimer) {
+                clearInterval(tr2State.rollTimer);
+                tr2State.rollTimer = null;
+            }
+
+            showScreen('teamReels2');
+            tr2State.done = false;
+            tr2State.taps = 0;
+            tr2State.running = 0;
+            tr2State.allowedTaps = 0;
+            tr2State.phase = 'rolling';
+            tr2State.revealed = [false, false, false, false, false];
+            const picks = [];
+            for (let i = 0; i < 5; i++) {
+                picks.push(TR2_COIN_POOL[Math.floor(Math.random() * TR2_COIN_POOL.length)]);
+            }
+            tr2State.values = picks;
+
+            const spinEl = document.getElementById('tr2PickSpinner');
+            spinEl.classList.remove('locked');
+            spinEl.classList.add('rolling');
+            spinEl.innerText = '1';
+
+            document.getElementById('tr2Instruction').innerText = 'Surveying picks…';
+            document.getElementById('tr2TapCounter').innerText = '…';
+            document.getElementById('tr2LedScoreboard').innerText = 'Running total: $0';
+
+            for (let i = 0; i < 5; i++) {
+                const rev = document.getElementById('tr2-reveal-' + i);
+                rev.innerText = '?';
+                rev.classList.remove('revealed');
+                document.getElementById('tr2-btn-' + i).disabled = true;
+                document.getElementById('tr2-light-' + i).classList.remove('active');
+            }
+
+            const session = ++tr2SessionId;
+            const finalPick = 1 + Math.floor(Math.random() * 5);
+            let tick = 0;
+            tr2State.rollTimer = setInterval(() => {
+                tick++;
+                spinEl.innerText = String((tick % 5) + 1);
+            }, TR2_TICK_MS);
+
+            setTimeout(() => {
+                if (session !== tr2SessionId) return;
+                if (tr2State.rollTimer) {
+                    clearInterval(tr2State.rollTimer);
+                    tr2State.rollTimer = null;
+                }
+                tr2State.allowedTaps = finalPick;
+                tr2State.phase = 'playing';
+                spinEl.innerText = String(finalPick);
+                spinEl.classList.remove('rolling');
+                spinEl.classList.add('locked');
+
+                const n = finalPick;
+                const standWord = n === 1 ? 'stand' : 'stands';
+                document.getElementById('tr2Instruction').innerText = `Tap on ${n} ${standWord}`;
+                document.getElementById('tr2TapCounter').innerText = '0 / ' + n;
+
+                for (let j = 0; j < 5; j++) {
+                    document.getElementById('tr2-btn-' + j).disabled = false;
+                }
+            }, TR2_ROLL_MS);
+        }
+
+        function onTr2Stand(idx) {
+            if (tr2State.phase !== 'playing' || tr2State.done || tr2State.revealed[idx]) return;
+            if (tr2State.taps >= tr2State.allowedTaps) return;
+
+            tr2State.revealed[idx] = true;
+            tr2State.taps++;
+            const val = tr2State.values[idx];
+            tr2State.running += val;
+
+            const rev = document.getElementById('tr2-reveal-' + idx);
+            rev.innerText = '$' + val.toLocaleString();
+            rev.classList.add('revealed');
+            document.getElementById('tr2-btn-' + idx).disabled = true;
+            document.getElementById('tr2-light-' + idx).classList.add('active');
+
+            const max = tr2State.allowedTaps;
+            document.getElementById('tr2TapCounter').innerText = tr2State.taps + ' / ' + max;
+            document.getElementById('tr2LedScoreboard').innerText = 'Running total: $' + tr2State.running.toLocaleString();
+
+            if (tr2State.taps >= max) {
+                tr2State.done = true;
+                tr2State.phase = 'done';
+                for (let j = 0; j < 5; j++) {
+                    if (!tr2State.revealed[j]) document.getElementById('tr2-btn-' + j).disabled = true;
+                }
+                state.miniGamePayout = tr2State.running;
+                setTimeout(() => {
+                    if (state.miniGamePayout >= 40000) fireConfetti();
+                    document.getElementById('rewardTitle').innerText = state.miniGamePayout >= 40000 ? "BIG TEAM PICK!" : "TEAM PAYOUT!";
+                    document.getElementById('rewardDesc').innerText = `Payout: $${state.miniGamePayout.toLocaleString()} Coins!`;
+                    document.getElementById('rewardIcon').innerHTML = `<span class="text-8xl">💰</span>`;
+                    showScreen('reward');
+                }, 650);
+            }
+        }
+
+        // --- TEAM REELS 3 (classic: always 3 taps, no pick spinner) ---
+        function startTeamReels3() {
+            document.getElementById('calcOverlay').style.display = 'none';
+            showScreen('teamReels3');
+            tr3State.done = false;
+            tr3State.taps = 0;
+            tr3State.running = 0;
+            tr3State.revealed = [false, false, false, false, false];
+            const picks = [];
+            for (let i = 0; i < 5; i++) {
+                picks.push(TR2_COIN_POOL[Math.floor(Math.random() * TR2_COIN_POOL.length)]);
+            }
+            tr3State.values = picks;
+
+            document.getElementById('tr3Instruction').innerText = 'Tap on 3 stands';
+            document.getElementById('tr3TapCounter').innerText = '0 / 3';
+            document.getElementById('tr3LedScoreboard').innerText = 'Running total: $0';
+
+            for (let i = 0; i < 5; i++) {
+                const rev = document.getElementById('tr3-reveal-' + i);
+                rev.innerText = '?';
+                rev.classList.remove('revealed');
+                document.getElementById('tr3-btn-' + i).disabled = false;
+                document.getElementById('tr3-light-' + i).classList.remove('active');
+            }
+        }
+
+        function onTr3Stand(idx) {
+            if (tr3State.done || tr3State.revealed[idx] || tr3State.taps >= 3) return;
+
+            tr3State.revealed[idx] = true;
+            tr3State.taps++;
+            const val = tr3State.values[idx];
+            tr3State.running += val;
+
+            const rev = document.getElementById('tr3-reveal-' + idx);
+            rev.innerText = '$' + val.toLocaleString();
+            rev.classList.add('revealed');
+            document.getElementById('tr3-btn-' + idx).disabled = true;
+            document.getElementById('tr3-light-' + idx).classList.add('active');
+
+            document.getElementById('tr3TapCounter').innerText = tr3State.taps + ' / 3';
+            document.getElementById('tr3LedScoreboard').innerText = 'Running total: $' + tr3State.running.toLocaleString();
+
+            if (tr3State.taps >= 3) {
+                tr3State.done = true;
+                for (let j = 0; j < 5; j++) {
+                    if (!tr3State.revealed[j]) document.getElementById('tr3-btn-' + j).disabled = true;
+                }
+                state.miniGamePayout = tr3State.running;
+                setTimeout(() => {
+                    if (state.miniGamePayout >= 40000) fireConfetti();
+                    document.getElementById('rewardTitle').innerText = state.miniGamePayout >= 40000 ? "BIG TEAM PICK!" : "TEAM PAYOUT!";
+                    document.getElementById('rewardDesc').innerText = `Payout: $${state.miniGamePayout.toLocaleString()} Coins!`;
+                    document.getElementById('rewardIcon').innerHTML = `<span class="text-8xl">💰</span>`;
+                    showScreen('reward');
+                }, 650);
+            }
         }
 
         // --- GLOBAL LOGIC ---
@@ -613,11 +863,20 @@
 
             tallyValue('ui-coins', oldC, state.coins);
 
-            setTimeout(() => { document.getElementById('mainCard').classList.remove('is-flipped'); const d = document.getElementById('directTeamLine'); if (d) { d.classList.add('hidden'); d.innerText = ''; } state.directWinnerLine = null; state.currentReward = null; showScreen('draw'); }, 1800);
+            setTimeout(() => {
+                document.getElementById('mainCard').classList.remove('is-flipped');
+                state.currentReward = null;
+                showScreen('draw');
+            }, 1800);
         }
 
         function toggleDebug() { const p = document.getElementById('debugPanel'); p.style.display = p.style.display === 'block' ? 'none' : 'block'; }
-        function showScreen(id) { Object.values(screens).forEach(s => s.classList.remove('active')); screens[id].classList.add('active'); }
+        function showScreen(id) {
+            const next = screens[id];
+            if (!next) return;
+            Object.values(screens).forEach(s => { if (s) s.classList.remove('active'); });
+            next.classList.add('active');
+        }
         function setForce(id) { state.forcedRoute = id === 'random' ? null : id; document.querySelectorAll('.debug-btn').forEach(b => b.classList.remove('active')); document.getElementById('btn-' + id).classList.add('active'); }
         updateHUD();
     </script>
