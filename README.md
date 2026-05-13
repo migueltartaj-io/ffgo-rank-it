@@ -4,7 +4,7 @@ Family Feud-style ranking mini-game. Pure static HTML/CSS/JS, no build step. Ope
 
 ## Modes
 
-- **`chance.html`** — Survey Chance (fork of [sdoongoor-test/chance.html](https://sdoongoor-test.github.io/test/chance.html)): direct **Coins** & **Spins** show **“Your team won:”** or **“Your opponent won:”**; Sudden Death, Strike-Out, and Shuffle removed; **Team Reels** and **Strike Shield** kept.
+- **`chance.html`** — Survey Chance (fork of [sdoongoor-test/chance.html](https://sdoongoor-test.github.io/test/chance.html)): direct **coins** use **“Your team won:”** / **“Your opponent won:”** on the card, then a simple **OK** step (no Collect modal). Pool: **coins** + **Team Reels** only (no spins / strike shield as chance outcomes).
 - **`index.html`** — 5-tile Lock-It-In mode. Drag to re-rank all 5 answers, 3 strikes to clear the board.
 - **`drag-n-drop.html`** — 4-tile Drag-n-Drop mode. Interactive pointer-based drag; the tile follows the cursor, the hover target slides to preview the swap.
 - **`sudden_death.html`** — 4-tile Sudden Death **with Strike Shields** (5 for the whole run until New Game). One swap per puzzle; wrong swap spends a shield or loses the round. This is what GitHub Pages serves at the Sudden Death URL below.

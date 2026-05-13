@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Family Feud - Chance Master</title>
-    <!-- Mod: based on sdoongoor-test.github.io/test/chance.html — no Sudden Death / Strike-Out / Shuffle; coins & spins show Your team won / Your opponent won -->
+    <!-- Mod: coins direct reward → team/opponent line + OK only (no Collect modal). Spins & Strike Shield removed from pool. -->
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@700&family=Oswald:wght@500;700&family=Orbitron:wght@700&display=swap');
@@ -137,7 +137,7 @@
         .winnings-box.bump { transform: scale(1.1); }
 
         /* Pop/Tally Animation */
-        #ui-coins, #ui-spins, #ui-shields {
+        #ui-coins {
             transition: all 0.1s ease-out;
             display: inline-block;
         }
@@ -240,8 +240,6 @@
             <div class="text-[10px] uppercase text-gray-500 mb-3 font-bold tracking-widest text-center border-b border-gray-800 pb-1">Cheat Engine</div>
             <button onclick="setForce('random')" class="debug-btn active" id="btn-random">🎲 Random Loop</button>
             <button onclick="setForce('coins')" class="debug-btn" id="btn-coins">💰 Coins</button>
-            <button onclick="setForce('spins')" class="debug-btn" id="btn-spins">⚡ Spins</button>
-            <button onclick="setForce('shield')" class="debug-btn" id="btn-shield">❌ Strike Shield</button>
             <button onclick="setForce('familyPodium')" class="debug-btn" id="btn-familyPodium">🎰 Team Reels</button>
         </div>
     </div>
@@ -249,8 +247,6 @@
     <!-- ECONOMY HUD -->
     <div id="hud" class="uppercase font-bold">
         <div id="hud-coins" class="hud-item"><span class="text-blue-300 block text-[10px]">Bank</span><span id="ui-coins" class="text-yellow-400 text-lg">24,000</span></div>
-        <div id="hud-spins" class="hud-item"><span class="text-blue-300 block text-[10px]">Spins</span><span id="ui-spins" class="text-white text-lg">15</span></div>
-        <div id="hud-shields" class="hud-item"><span class="text-blue-300 block text-[10px]">Shields</span><span id="ui-shields" class="text-red-500 text-lg">2/3</span></div>
     </div>
 
     <!-- MAIN SCREEN -->
@@ -294,7 +290,15 @@
         <p id="podiumStatus" class="mt-6 text-blue-200 font-bold uppercase tracking-widest opacity-0">Surveying Team...</p>
     </section>
 
-    <!-- REWARD MODAL -->
+    <!-- COINS: team / opponent message + OK (no Collect flow) -->
+    <section id="coinOkScreen" class="screen bg-black/85 backdrop-blur-md z-[2000]">
+        <div class="animate-bounce-in bg-white rounded-[2.5rem] p-10 md:p-12 text-blue-900 flex flex-col items-center w-[90%] max-w-sm text-center border-4 border-yellow-400">
+            <p id="coinOkHeadline" class="text-3xl sm:text-4xl font-black uppercase italic text-blue-900 leading-tight mb-8">...</p>
+            <button type="button" onclick="confirmCoinOk()" class="btn-feud-green w-full py-6 rounded-2xl text-3xl shadow-xl">OK</button>
+        </div>
+    </section>
+
+    <!-- REWARD MODAL (Team Reels payout only) -->
     <section id="rewardScreen" class="screen bg-black/85 backdrop-blur-md z-[2000]">
         <div class="animate-bounce-in bg-white rounded-[2.5rem] p-12 text-blue-900 flex flex-col items-center w-[90%] max-w-sm text-center border-4 border-yellow-400">
             <div id="rewardIcon" class="mt-4 mb-12 transform scale-150"></div>
@@ -313,7 +317,7 @@
 
     <script>
         let state = {
-            coins: 24000, spins: 15, shields: 2,
+            coins: 24000,
             currentReward: null, forcedRoute: null,
             isSpinning: false, miniGamePayout: 0,
             directWinnerLine: null
@@ -322,6 +326,7 @@
 
         const screens = {
             draw: document.getElementById('drawScreen'),
+            coinOk: document.getElementById('coinOkScreen'),
             reward: document.getElementById('rewardScreen'),
             familyPodium: document.getElementById('familyPodiumScreen')
         };
@@ -329,8 +334,6 @@
         function updateHUD(immediate = true) {
             if (immediate) {
                 document.getElementById('ui-coins').innerText = state.coins.toLocaleString();
-                document.getElementById('ui-spins').innerText = state.spins;
-                document.getElementById('ui-shields').innerText = `${state.shields}/3`;
             }
         }
 
@@ -346,7 +349,7 @@
                 const elapsed = currentTime - startTime;
                 const progress = Math.min(elapsed / duration, 1);
                 const current = Math.floor(start + (end - start) * progress);
-                el.innerText = elementId === 'ui-coins' ? current.toLocaleString() : (elementId === 'ui-shields' ? `${current}/3` : current);
+                el.innerText = current.toLocaleString();
                 
                 if (progress < 1) {
                     requestAnimationFrame(update);
@@ -417,8 +420,6 @@
             
             const pool = [
                 { id: 'coins', title: 'Coins', icon: '💰', val: 500, label: '500 Coins' },
-                { id: 'spins', title: 'Spins', icon: '⚡', val: 5, label: '5 Extra Spins' },
-                { id: 'shield', title: 'Strike Shield', icon: '<div class="text-red-600 font-black text-6xl">X</div>', val: 1, label: '1 Shield Added' },
                 { id: 'familyPodium', title: 'Team Reels', icon: '🎰', isGame: true }
             ];
 
@@ -426,7 +427,7 @@
             state.currentReward = route;
             state.directWinnerLine = null;
             const dtl = document.getElementById('directTeamLine');
-            if (route.id === 'coins' || route.id === 'spins') {
+            if (route.id === 'coins') {
                 state.directWinnerLine = (Math.random() < 0.5) ? 'Your team won:' : 'Your opponent won:';
                 dtl.innerText = state.directWinnerLine;
                 dtl.classList.remove('hidden');
@@ -436,7 +437,7 @@
             }
 
             document.getElementById('routingTitle').innerText = route.title;
-            document.getElementById('routingIcon').innerHTML = (route.id === 'shield') ? route.icon : `<span class="text-7xl">${route.icon}</span>`;
+            document.getElementById('routingIcon').innerHTML = `<span class="text-7xl">${route.icon}</span>`;
             
             const valEl = document.getElementById('routingValue');
             if (!route.isGame) {
@@ -450,10 +451,8 @@
             setTimeout(() => {
                 if (route.id === 'familyPodium') startFamilyPodium();
                 else {
-                    document.getElementById('rewardTitle').innerText = route.title + "!";
-                    document.getElementById('rewardDesc').innerText = (state.directWinnerLine ? state.directWinnerLine + ' ' : '') + route.label;
-                    document.getElementById('rewardIcon').innerHTML = route.id === 'shield' ? route.icon : `<span class="text-8xl">${route.icon}</span>`;
-                    showScreen('reward');
+                    document.getElementById('coinOkHeadline').innerText = state.directWinnerLine || '';
+                    showScreen('coinOk');
                 }
             }, 1200);
         }
@@ -566,17 +565,29 @@
             }
         }
 
+        function confirmCoinOk() {
+            const r = state.currentReward;
+            if (!r || r.id !== 'coins') return;
+            const oldC = state.coins;
+            state.coins += r.val;
+            tallyValue('ui-coins', oldC, state.coins);
+            document.getElementById('mainCard').classList.remove('is-flipped');
+            const d = document.getElementById('directTeamLine');
+            if (d) { d.classList.add('hidden'); d.innerText = ''; }
+            state.directWinnerLine = null;
+            state.currentReward = null;
+            showScreen('draw');
+            updateHUD(true);
+        }
+
         // --- GLOBAL LOGIC ---
         function confirmCollection(e) {
-            const r = state.currentReward;
-            const oldC = state.coins, oldS = state.spins, oldSh = state.shields;
-            if (r.id === 'spins') state.spins += r.val;
-            else if (r.id === 'shield') state.shields = Math.min(3, state.shields + 1);
-            else state.coins += (r.isGame ? state.miniGamePayout : r.val);
+            const oldC = state.coins;
+            state.coins += state.miniGamePayout;
 
             const rect = e.target.getBoundingClientRect();
-            const icon = r.id === 'spins' ? '⚡' : (r.id === 'shield' ? '🛡️' : '💰');
-            const targetId = r.id === 'spins' ? 'hud-spins' : (r.id === 'shield' ? 'hud-shields' : 'hud-coins');
+            const icon = '💰';
+            const targetId = 'hud-coins';
 
             for (let i = 0; i < 12; i++) {
                 setTimeout(() => {
@@ -600,11 +611,9 @@
                 }, i * 60);
             }
 
-            if (r.id === 'spins') tallyValue('ui-spins', oldS, state.spins);
-            else if (r.id === 'shield') tallyValue('ui-shields', oldSh, state.shields);
-            else tallyValue('ui-coins', oldC, state.coins);
+            tallyValue('ui-coins', oldC, state.coins);
 
-            setTimeout(() => { document.getElementById('mainCard').classList.remove('is-flipped'); const d = document.getElementById('directTeamLine'); if (d) { d.classList.add('hidden'); d.innerText = ''; } state.directWinnerLine = null; showScreen('draw'); }, 1800);
+            setTimeout(() => { document.getElementById('mainCard').classList.remove('is-flipped'); const d = document.getElementById('directTeamLine'); if (d) { d.classList.add('hidden'); d.innerText = ''; } state.directWinnerLine = null; state.currentReward = null; showScreen('draw'); }, 1800);
         }
 
         function toggleDebug() { const p = document.getElementById('debugPanel'); p.style.display = p.style.display === 'block' ? 'none' : 'block'; }
