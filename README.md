@@ -17,6 +17,7 @@ Family Feud-style ranking mini-game. Pure static HTML/CSS/JS, no build step. Ope
 - Drag-n-Drop: https://migueltartaj-io.github.io/ffgo-rank-it/drag-n-drop.html
 - Sudden Death: https://migueltartaj-io.github.io/ffgo-rank-it/sudden_death.html
 - Pass or Play (shields): https://migueltartaj-io.github.io/ffgo-rank-it/pass_or_play_with_shields.html
+- Survey Chance (mod): https://migueltartaj-io.github.io/ffgo-rank-it/chance.html
 - **Slack links (Pass or Play + Sudden Death only):** https://migueltartaj-io.github.io/ffgo-rank-it/slack-links.html
 
 `slack-links.html` lists only those two prototypes. Pasting each URL into Slack should unfurl using the `og:` meta tags on each page.
